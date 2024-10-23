@@ -56,12 +56,20 @@ class ThermalCamera(Camera):
     def fetch_data(self):
         """Fetch data from the URL and process the frame."""
         try:
+            _LOGGER.debug("Fetching data from URL: %s", self._url)
             response = requests.get(f"{self._url}/json", timeout=5)
+            response.raise_for_status()
             data = response.json()
 
             frame_data = np.array(data["frame"]).reshape(ROWS, COLS)
             min_value = data["lowest"]
             max_value = data["highest"]
+
+            _LOGGER.debug("Frame data fetched successfully. Min: %s, Max: %s", min_value, max_value)
+
+            # Find the index of the highest value
+            max_index = np.argmax(frame_data)
+            max_row, max_col = divmod(max_index, COLS)
 
             # Create an RGB image using PIL
             img = Image.new("RGB", (COLS, ROWS))
@@ -73,13 +81,18 @@ class ThermalCamera(Camera):
                     color = self.map_to_color(frame_data[r, c], min_value, max_value)
                     draw.point((c, r), fill=color)
 
+            # Draw the highest value as white text
+            text = f"{frame_data[max_row, max_col]:.1f}"
+            draw.text((max_col, max_row), text, fill="white")
+
             # Scale up the image
             img = img.resize((640, 480), resample=Image.NEAREST)
 
             # Convert to JPEG bytes
             self._frame = self.image_to_jpeg_bytes(img)
+            _LOGGER.debug("Image converted to JPEG bytes successfully.")
         except Exception as e:
-            _LOGGER.error(f"Error fetching or processing data: {e}")
+            _LOGGER.error("Error fetching or processing data: %s", e)
 
     def image_to_jpeg_bytes(self, img):
         """Convert PIL image to JPEG bytes."""

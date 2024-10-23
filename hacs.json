@@ -1,5 +1,5 @@
 {
-  "name": "Thermal Camera",
+  "name": "Thermal Camera for M5Stack T-Lite",
   "content_in_root": false,
   "domains": ["camera"],
   "country": "global",
