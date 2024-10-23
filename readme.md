@@ -1,3 +1,5 @@
+![Thermal Camera Icon](icon.png)
+
 # Thermal Camera
 
 A custom Home Assistant integration for visualizing thermal camera data.
