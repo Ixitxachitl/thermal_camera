@@ -5,10 +5,11 @@
   "documentation": "https://github.com/Ixitxachitl/thermal_camera",
   "requirements": [
     "requests>=2.31.0",
-    "numpy>=1.21.0,<1.26.0",
+    "numpy>=1.21.0,<1.26.4",
     "opencv-python-headless>=4.5.3.56,<4.8.0.0"
   ],
   "dependencies": [],
   "codeowners": ["@Ixitxachitl"],
-  "iot_class": "local_polling"
+  "iot_class": "local_polling",
+  "icon": "custom_components/thermal_camera/icon.png"
 }
