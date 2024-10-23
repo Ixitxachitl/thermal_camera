@@ -6,7 +6,7 @@
   "requirements": [
     "requests>=2.31.0",
     "numpy>=1.21.0",
-    "opencv-python-headless>=4.5.3.56"
+    "opencv-python>=4.5.3.56"
   ],
   "dependencies": [],
   "codeowners": ["@Ixitxachitl"],
