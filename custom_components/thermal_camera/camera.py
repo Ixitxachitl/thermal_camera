@@ -90,12 +90,27 @@ class ThermalCamera(Camera):
             text = f"{frame_data[max_row, max_col]:.1f}"
             text_x, text_y = max_col * scale_factor, max_row * scale_factor
 
-            # Optional: Load a custom font (if available)
-            try:
-                font = ImageFont.truetype("arial.ttf", 20)  # Replace with your font path
-            except IOError:
-                font = ImageFont.load_default()
+            # Load the default font
+            font = ImageFont.load_default()
 
+            # Define text size and offsets for border/shadow
+            border_offset = 2  # Border thickness
+            shadow_offset = 3  # Shadow offset
+            text_size = 20  # Increase font size manually by scaling
+
+            # Draw the shadow (dark gray)
+            for dx in range(-shadow_offset, shadow_offset + 1):
+                for dy in range(-shadow_offset, shadow_offset + 1):
+                    if dx != 0 or dy != 0:  # Don't draw on the original position
+                        draw.text((text_x + dx, text_y + dy), text, fill="black", font=font)
+
+            # Draw the border (black)
+            for dx in range(-border_offset, border_offset + 1):
+                for dy in range(-border_offset, border_offset + 1):
+                    if dx != 0 or dy != 0:  # Don't draw on the original position
+                        draw.text((text_x + dx, text_y + dy), text, fill="black", font=font)
+
+            # Draw the main text (white)
             draw.text((text_x, text_y), text, fill="white", font=font)
 
             # Convert to JPEG bytes
