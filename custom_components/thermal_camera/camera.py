@@ -1,5 +1,6 @@
 import logging
 import requests
+from io import BytesIO
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from homeassistant.components.camera import Camera, PLATFORM_SCHEMA
@@ -83,34 +84,32 @@ class ThermalCamera(Camera):
 
             # Scale up the image
             scale_factor = 20  # Adjust scale factor for better visibility
-            img = img.resize((COLS * scale_factor, ROWS * scale_factor), resample=Image.LANCZOS)
+            img = img.resize((COLS * scale_factor, ROWS * scale_factor), resample=Image.NEAREST)
 
             # Add the highest value text after scaling
             draw = ImageDraw.Draw(img)
             text = f"{frame_data[max_row, max_col]:.1f}"
             text_x, text_y = max_col * scale_factor, max_row * scale_factor
 
-            # Load the default font
-            font = ImageFont.load_default()
+            # Download and load the Google Font
+            font_url = "https://github.com/google/fonts/raw/main/ofl/spacemono/SpaceMono-Regular.ttf"
+            try:
+                font_response = requests.get(font_url, timeout=10)
+                font_response.raise_for_status()
+                font = ImageFont.truetype(BytesIO(font_response.content), 40)  # Adjust font size as needed
+                _LOGGER.debug("Google Font loaded successfully.")
+            except Exception as e:
+                _LOGGER.error(f"Failed to load Google Font: {e}")
+                font = ImageFont.load_default()
 
-            # Define text size and offsets for border/shadow
-            border_offset = 2  # Border thickness
+            # Draw the text with a shadow for better visibility
             shadow_offset = 3  # Shadow offset
-            text_size = 40  # Increase font size manually by scaling
-
-            # Draw the shadow (dark gray)
             for dx in range(-shadow_offset, shadow_offset + 1):
                 for dy in range(-shadow_offset, shadow_offset + 1):
-                    if dx != 0 or dy != 0:  # Don't draw on the original position
+                    if dx != 0 or dy != 0:  # Avoid the center position
                         draw.text((text_x + dx, text_y + dy), text, fill="black", font=font)
 
-            # Draw the border (black)
-            for dx in range(-border_offset, border_offset + 1):
-                for dy in range(-border_offset, border_offset + 1):
-                    if dx != 0 or dy != 0:  # Don't draw on the original position
-                        draw.text((text_x + dx, text_y + dy), text, fill="black", font=font)
-
-            # Draw the main text (white)
+            # Draw the main text (white) in the center
             draw.text((text_x, text_y), text, fill="white", font=font)
 
             # Convert to JPEG bytes
