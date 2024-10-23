@@ -96,7 +96,7 @@ class ThermalCamera(Camera):
             # Define text size and offsets for border/shadow
             border_offset = 2  # Border thickness
             shadow_offset = 3  # Shadow offset
-            text_size = 20  # Increase font size manually by scaling
+            text_size = 40  # Increase font size manually by scaling
 
             # Draw the shadow (dark gray)
             for dx in range(-shadow_offset, shadow_offset + 1):
