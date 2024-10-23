@@ -81,12 +81,22 @@ class ThermalCamera(Camera):
                     color = self.map_to_color(frame_data[r, c], min_value, max_value)
                     draw.point((c, r), fill=color)
 
-            # Draw the highest value as white text
-            text = f"{frame_data[max_row, max_col]:.1f}"
-            draw.text((max_col, max_row), text, fill="white")
-
             # Scale up the image
-            img = img.resize((640, 480), resample=Image.NEAREST)
+            scale_factor = 20  # Adjust scale factor for better visibility
+            img = img.resize((COLS * scale_factor, ROWS * scale_factor), resample=Image.NEAREST)
+
+            # Add the highest value text after scaling
+            draw = ImageDraw.Draw(img)
+            text = f"{frame_data[max_row, max_col]:.1f}"
+            text_x, text_y = max_col * scale_factor, max_row * scale_factor
+
+            # Optional: Load a custom font (if available)
+            try:
+                font = ImageFont.truetype("arial.ttf", 20)  # Replace with your font path
+            except IOError:
+                font = ImageFont.load_default()
+
+            draw.text((text_x, text_y), text, fill="white", font=font)
 
             # Convert to JPEG bytes
             self._frame = self.image_to_jpeg_bytes(img)
