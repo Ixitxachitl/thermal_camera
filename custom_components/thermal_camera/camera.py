@@ -84,7 +84,7 @@ class ThermalCamera(Camera):
 
             # Scale up the image
             scale_factor = 20  # Adjust scale factor for better visibility
-            img = img.resize((COLS * scale_factor, ROWS * scale_factor), resample=Image.LANCZOS)
+            img = img.resize((COLS * scale_factor, ROWS * scale_factor), resample=Image.BICUBIC)
 
             # Add the highest value text after scaling
             draw = ImageDraw.Draw(img)
