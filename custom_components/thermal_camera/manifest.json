@@ -2,13 +2,13 @@
   "domain": "thermal_camera",
   "name": "Thermal Camera",
   "version": "0.1.0",
-  "documentation": "https://github.com/yourusername/thermal_camera",
+  "documentation": "https://github.com/Ixitxachitl/thermal_camera",
   "requirements": [
     "requests>=2.31.0",
     "numpy>=1.21.0",
     "pillow>=10.0.0"
   ],
   "dependencies": [],
-  "codeowners": ["@yourusername"],
+  "codeowners": ["@Ixitxachitl"],
   "iot_class": "local_polling"
 }

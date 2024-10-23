@@ -88,8 +88,8 @@ class ThermalCamera(Camera):
             img.save(output, format="JPEG")
             return output.getvalue()
 
-    def camera_image(self):
-        """Return the camera image."""
+    def camera_image(self, width=None, height=None):
+        """Return the camera image, optionally resized."""
         self.fetch_data()
         return self._frame
 
