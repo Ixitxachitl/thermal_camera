@@ -1,14 +1,17 @@
-![Thermal Camera Icon](icon.png)
+# Thermal Camera Integration for M5Stack T-Lite
 
-# Thermal Camera
+A custom Home Assistant integration that visualizes thermal data from the M5Stack T-Lite device.
 
-A custom Home Assistant integration for visualizing thermal camera data.
+## Features
+- Maps thermal data to a color gradient (blue, yellow, red) based on temperature.
+- Lightweight implementation using PIL (Pillow), optimized for Raspberry Pi and other low-resource devices.
+- Designed specifically for the M5Stack T-Lite.
 
 ## Installation
 
 ### HACS Installation
 1. Add this repository as a custom repository in HACS.
-2. Search for "Thermal Camera" in HACS and install it.
+2. Search for "Thermal Camera for M5Stack T-Lite" in HACS and install it.
 3. Restart Home Assistant.
 
 ### Manual Installation
@@ -18,8 +21,9 @@ A custom Home Assistant integration for visualizing thermal camera data.
 ## Configuration
 
 Add the following to your `configuration.yaml`:
+
 ```yaml
 camera:
   - platform: thermal_camera
-    name: "Thermal Camera"
-    url: "http://192.168.50.210"
+    name: "M5Stack T-Lite Thermal Camera"
+    url: "http://<device-ip>"
