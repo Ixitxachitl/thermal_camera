@@ -1,7 +1,7 @@
 import logging
 import requests
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from homeassistant.components.camera import Camera, PLATFORM_SCHEMA
 from homeassistant.const import CONF_NAME
 import homeassistant.helpers.config_validation as cv
