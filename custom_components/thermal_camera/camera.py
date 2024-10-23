@@ -1,31 +1,26 @@
 import logging
 import requests
-import voluptuous as vol
-import cv2
 import numpy as np
+from PIL import Image, ImageDraw
 from homeassistant.components.camera import Camera, PLATFORM_SCHEMA
 from homeassistant.const import CONF_NAME
 import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 
-# Set up logging
 _LOGGER = logging.getLogger(__name__)
 
-# Configuration constants
 CONF_URL = "url"
 DEFAULT_NAME = "Thermal Camera"
 ROWS, COLS = 24, 32
 
-# Validation schema for platform configuration
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
     vol.Required(CONF_URL): cv.url,
 })
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
-    """Set up the thermal camera platform."""
     name = config.get(CONF_NAME)
     url = config.get(CONF_URL)
-
     add_entities([ThermalCamera(name, url)], True)
 
 class ThermalCamera(Camera):
@@ -56,7 +51,7 @@ class ThermalCamera(Camera):
             b = 0
             g = int(255 * (2 * (1 - normalized)))
             r = int(255 * (2 * (normalized - 0.5)))
-        return (max(0, min(255, b)), max(0, min(255, g)), max(0, min(255, r)))
+        return (r, g, b)
 
     def fetch_data(self):
         """Fetch data from the URL and process the frame."""
@@ -68,23 +63,30 @@ class ThermalCamera(Camera):
             min_value = data["lowest"]
             max_value = data["highest"]
 
-            # Create an empty RGB image
-            img = np.zeros((ROWS, COLS, 3), dtype=np.uint8)
+            # Create an RGB image using PIL
+            img = Image.new("RGB", (COLS, ROWS))
+            draw = ImageDraw.Draw(img)
 
             # Map frame data to colors
             for r in range(ROWS):
                 for c in range(COLS):
-                    img[r, c] = self.map_to_color(frame_data[r, c], min_value, max_value)
+                    color = self.map_to_color(frame_data[r, c], min_value, max_value)
+                    draw.point((c, r), fill=color)
 
-            # Scale up the image for better visibility
-            img_scaled = cv2.resize(img, (640, 480), interpolation=cv2.INTER_NEAREST)
+            # Scale up the image
+            img = img.resize((640, 480), resample=Image.NEAREST)
 
-            # Encode the image to JPEG
-            ret, jpeg_img = cv2.imencode('.jpg', img_scaled)
-            if ret:
-                self._frame = jpeg_img.tobytes()
+            # Convert to JPEG bytes
+            self._frame = self.image_to_jpeg_bytes(img)
         except Exception as e:
             _LOGGER.error(f"Error fetching or processing data: {e}")
+
+    def image_to_jpeg_bytes(self, img):
+        """Convert PIL image to JPEG bytes."""
+        from io import BytesIO
+        with BytesIO() as output:
+            img.save(output, format="JPEG")
+            return output.getvalue()
 
     def camera_image(self):
         """Return the camera image."""
