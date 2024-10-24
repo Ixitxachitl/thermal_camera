@@ -1,5 +1,6 @@
 import logging
-import requests
+import aiohttp
+import async_timeout
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.const import CONF_NAME, CONF_URL
 import homeassistant.helpers.config_validation as cv
@@ -8,18 +9,19 @@ import voluptuous as vol
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_NAME = "Thermal Motion Sensor"
-MOTION_THRESHOLD = 2.5  # Adjust this value based on your testing
+MOTION_THRESHOLD = 8  # Adjust this value based on your testing
 
 PLATFORM_SCHEMA = vol.Schema({
     vol.Required(CONF_URL): cv.url,
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
 })
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
-    """Set up the motion detection sensor."""
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+    """Set up the motion detection sensor platform asynchronously."""
     name = config.get(CONF_NAME)
     url = config.get(CONF_URL)
-    add_entities([ThermalMotionSensor(name, url)], True)
+
+    async_add_entities([ThermalMotionSensor(name, url)], True)
 
 class ThermalMotionSensor(BinarySensorEntity):
     """Representation of a thermal motion detection sensor."""
@@ -45,13 +47,18 @@ class ThermalMotionSensor(BinarySensorEntity):
         """Return the icon for the sensor."""
         return "mdi:motion-sensor"
 
-    def update(self):
-        """Fetch the latest data from the URL and update the sensor state."""
+    async def async_update(self):
+        """Fetch the latest data from the URL and update the sensor state asynchronously."""
         try:
             _LOGGER.debug("Fetching data from URL: %s", self._url)
-            response = requests.get(self._url, timeout=5)
-            response.raise_for_status()
-            data = response.json()
+            async with async_timeout.timeout(10):
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(self._url) as response:
+                        if response.status != 200:
+                            _LOGGER.error("Error fetching data, status code: %s", response.status)
+                            self._is_on = False
+                            return
+                        data = await response.json()
 
             avg_temp = data.get("average")
             max_temp = data.get("highest")
@@ -70,6 +77,9 @@ class ThermalMotionSensor(BinarySensorEntity):
                 avg_temp, max_temp, temp_diff, self._is_on
             )
 
+        except aiohttp.ClientError as e:
+            _LOGGER.error("Error fetching data from %s: %s", self._url, e)
+            self._is_on = False
         except Exception as e:
-            _LOGGER.error("Error fetching or processing data: %s", e)
+            _LOGGER.error("Unexpected error: %s", e)
             self._is_on = False
