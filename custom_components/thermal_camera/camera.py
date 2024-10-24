@@ -108,7 +108,7 @@ class ThermalCamera(Camera):
                 async with self._session.get(font_url) as font_response:
                     font_response.raise_for_status()
                     font_data = await font_response.read()
-                    font = ImageFont.truetype(BytesIO(font_data), 60)  # Increased font size
+                    font = ImageFont.truetype(BytesIO(font_data), 40)  # Increased font size
                     _LOGGER.debug("Google Font loaded successfully.")
             except Exception as e:
                 _LOGGER.error(f"Failed to load Google Font: {e}")
