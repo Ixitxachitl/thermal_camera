@@ -3,25 +3,24 @@ import aiohttp
 import async_timeout
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.const import CONF_NAME, CONF_URL
-import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
+import homeassistant.helpers.config_validation as cv
 
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_NAME = "Thermal Motion Sensor"
 MOTION_THRESHOLD = 8  # Adjust this value based on your testing
 
-PLATFORM_SCHEMA = vol.Schema({
+PLATFORM_SCHEMA = cv.PLATFORM_SCHEMA.extend({
     vol.Required(CONF_URL): cv.url,
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
 })
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the motion detection sensor platform asynchronously."""
-    name = config.get(CONF_NAME)
-    url = config.get(CONF_URL)
-
-    async_add_entities([ThermalMotionSensor(name, url)], True)
+    """Set up the thermal motion sensor asynchronously."""
+    name = config[CONF_NAME]
+    url = config[CONF_URL]
+    async_add_entities([ThermalMotionSensor(name, url)])
 
 class ThermalMotionSensor(BinarySensorEntity):
     """Representation of a thermal motion detection sensor."""

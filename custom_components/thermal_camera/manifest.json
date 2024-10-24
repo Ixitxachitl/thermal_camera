@@ -12,7 +12,5 @@
   "codeowners": ["@Ixitxachitl"],
   "iot_class": "local_polling",
   "supported_brands": ["M5Stack"],
-  "integration_type": "device",
-  "domains": ["camera", "binary_sensor"],
-  "icon": "icon.png"
+  "integration_type": "device"
 }
