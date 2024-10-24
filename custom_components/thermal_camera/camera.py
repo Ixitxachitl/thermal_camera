@@ -148,7 +148,7 @@ class ThermalCamera(Camera):
             text = f"{frame_data[max_row, max_col]:.1f}°"
             if max_row >= ROWS - 3:
                 # If the reticle is in the bottom three rows, move the text above the reticle
-                text_y = max(center_y - 80, 0)
+                text_y = max(center_y - 50, 0)
             else:
                 # Otherwise, place the text below the reticle
                 text_y = min(center_y + reticle_radius, img.height)
