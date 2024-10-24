@@ -6,6 +6,7 @@ A custom Home Assistant integration that visualizes thermal data from the M5Stac
 
 ## Features
 - Maps thermal data to a color gradient (blue, yellow, red) based on temperature.
+- Includes a motion detection binary sensor based on temperature changes.
 - Lightweight implementation using PIL (Pillow), optimized for Raspberry Pi and other low-resource devices.
 - Designed specifically for the M5Stack T-Lite but can be adapted to other devices.
 
