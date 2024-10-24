@@ -1,6 +1,6 @@
 {
   "name": "Thermal Camera for M5Stack T-Lite",
-  "content_in_root": false,
+  "content_in_root": true,
   "domains": ["camera"],
   "country": "global",
   "homeassistant": "2023.1.0",
