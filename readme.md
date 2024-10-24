@@ -59,7 +59,8 @@ The integration expects to fetch thermal data from the URL provided in the confi
 
 ### JSON Fields Description
 
-- The unit of temperature (`highest`, `lowest`, and values in `frame`) is not important to the functionality of this integration and can be provided in any consistent unit.
+- The unit of temperature (`average`, `highest`, `lowest`, and values in `frame`) is not important to the functionality of this integration and can be provided in any consistent unit.
+- **`average`**: The average temperature of all the pixels in the frame (float).
 - **`highest`**: The highest temperature in the frame (float).
 - **`lowest`**: The lowest temperature in the frame (float).
 - **`frame`**: An array of 768 floating-point values representing the 32x24 thermal image frame, ordered row by row.
