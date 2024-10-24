@@ -30,7 +30,13 @@ camera:
     name: "M5Stack T-Lite Thermal Camera"
     url: "http://<device-ip>"
 ````
-
+Motion Detection Sensor Configuration
+````yaml
+binary_sensor:
+  - platform: thermal_motion
+    name: "M5Stack T-Lite Motion Sensor"
+    url: "http://<device-ip>"
+````
 Replace `<device-ip>` with the actual IP address of your M5Stack T-Lite or compatible device.
 
 ## Expected URL and JSON Format
@@ -61,9 +67,15 @@ The integration expects to fetch thermal data from the URL provided in the confi
 - The endpoint must return the JSON response described above.
 - The device should be accessible via a URL in the format `http://<device-ip>/json`.
 
+## Motion Detection
+
+The motion detection sensor calculates the difference between the "highest" and "average" temperatures in the frame. If the difference exceeds a certain threshold (default: 2.5), it indicates motion. You can adjust this threshold in the component code.
+
 ## Development
 
-This integration uses a dynamic Google Font for text overlays, downloaded at runtime. Adjustments can be made in the `camera.py` code to change the font, scaling, or color mapping logic.
+- This integration uses a dynamic Google Font for text overlays, downloaded at runtime.
+- Adjustments can be made in the camera.py code to change the font, scaling, or color mapping logic.
+- For the motion detection sensor, you can customize the temperature difference threshold in the code to fine-tune sensitivity.
 
 ## Troubleshooting
 
