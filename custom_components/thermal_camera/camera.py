@@ -35,6 +35,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     font = await load_font_async(session)
     if font is None:
         font = ImageFont.load_default()
+    _LOGGER.debug(f"Font loaded: {font}")
 
     async_add_entities([ThermalCamera(name, url, session, font)], True)
 
@@ -46,7 +47,7 @@ async def load_font_async(session, size=40):
                 if response.status != 200:
                     _LOGGER.error("Error fetching font, status code: %s", response.status)
                     return None
-                
+
                 font_data = await response.read()
                 font = ImageFont.truetype(BytesIO(font_data), size)
                 _LOGGER.debug("Google Font loaded successfully.")
@@ -76,12 +77,10 @@ class ThermalCamera(Camera):
         """Map the thermal value to a color with yellow in the mid-range."""
         normalized = (value - min_value) / (max_value - min_value)
         if normalized < 0.5:
-            # Interpolate between blue and yellow
             b = int(255 * (1 - 2 * normalized))
             g = int(255 * (2 * normalized))
             r = 0
         else:
-            # Interpolate between yellow and red
             b = 0
             g = int(255 * (2 * (1 - normalized)))
             r = int(255 * (2 * (normalized - 0.5)))
@@ -125,6 +124,13 @@ class ThermalCamera(Camera):
             text = f"{frame_data[max_row, max_col]:.1f}°"
             text_x = min(max_col * scale_factor, img.width - 100)
             text_y = min(max_row * scale_factor, img.height - 40)
+
+            _LOGGER.debug(f"Drawing text at ({text_x}, {text_y}) with font {self._font}")
+
+            # Ensure the font is loaded
+            if not self._font:
+                _LOGGER.error("Font is not loaded, using default.")
+                self._font = ImageFont.load_default()
 
             # Draw the text with a shadow for visibility
             shadow_offset = 3
