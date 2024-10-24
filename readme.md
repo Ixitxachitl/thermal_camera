@@ -72,7 +72,7 @@ The integration expects to fetch thermal data from the URL provided in the confi
 
 ## Motion Detection
 
-The motion detection sensor calculates the difference between the "highest" and "average" temperatures in the frame. If the difference exceeds a certain threshold (default: 2.5), it indicates motion. You can adjust this threshold in the component code.
+The motion detection sensor calculates the difference between the "highest" and "average" temperatures in the frame. If the difference exceeds a certain threshold (default: 8), it indicates motion. You can adjust this threshold in the component code.
 
 ## Development
 
