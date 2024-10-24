@@ -93,6 +93,7 @@ class ThermalCamera(Camera):
 
             # Create an RGB image using PIL
             img = Image.new("RGB", (COLS, ROWS))
+            _LOGGER.debug("Initial image created. Image mode: %s, Image size: %s", img.mode, img.size)
             draw = ImageDraw.Draw(img)
 
             # Map frame data to colors
@@ -104,6 +105,7 @@ class ThermalCamera(Camera):
             # Scale up the image
             scale_factor = 20
             img = img.resize((COLS * scale_factor, ROWS * scale_factor), resample=Image.NEAREST)
+            _LOGGER.debug("Image resized. New size: %s", img.size)
 
             # Reinitialize ImageDraw after resizing
             draw = ImageDraw.Draw(img)
@@ -118,6 +120,7 @@ class ThermalCamera(Camera):
             reticle_radius = 10
 
             # Draw crosshairs and reticle (keeping everything in RGB mode)
+            _LOGGER.debug("Drawing reticle at coordinates: (%s, %s)", center_x, center_y)
             draw.line(
                 [(center_x, center_y - reticle_radius), (center_x, center_y + reticle_radius)],
                 fill="white",
@@ -130,13 +133,13 @@ class ThermalCamera(Camera):
             )
             draw.ellipse(
                 [(center_x - reticle_radius, center_y - reticle_radius), 
-                 (center_x + reticle_radius, center_y + reticle_radius)],
+                (center_x + reticle_radius, center_y + reticle_radius)],
                 outline="black",
                 width=3
             )
             draw.ellipse(
                 [(center_x - reticle_radius + 2, center_y - reticle_radius + 2),
-                 (center_x + reticle_radius - 2, center_y + reticle_radius - 2)],
+                (center_x + reticle_radius - 2, center_y + reticle_radius - 2)],
                 outline="white",
                 width=2
             )
@@ -146,7 +149,6 @@ class ThermalCamera(Camera):
             text_x = min(center_x, img.width - 100)
             text_y = min(center_y + reticle_radius, img.height)
 
-            _LOGGER.debug(f"Image size: {img.size}, Scale factor: {scale_factor}")
             _LOGGER.debug(f"Text coordinates: ({text_x}, {text_y}), Text: {text}")
 
             # Draw the text with shadow
@@ -156,7 +158,7 @@ class ThermalCamera(Camera):
             self._frame = self.image_to_jpeg_bytes(img)
             _LOGGER.debug("Image converted to JPEG bytes successfully.")
         except Exception as e:
-            _LOGGER.error("Error fetching or processing data: %s", e)
+            _LOGGER.error("Error fetching or processing data: %s", e, exc_info=True)
 
     def draw_text_with_shadow(self, img, text_x, text_y, text, font):
         """Draw text with both a black border and a semi-transparent shadow."""
