@@ -96,6 +96,9 @@ class ThermalCamera(Camera):
             scale_factor = 20
             img = img.resize((COLS * scale_factor, ROWS * scale_factor), resample=Image.BICUBIC)
 
+            # Reinitialize ImageDraw after scaling
+            draw = ImageDraw.Draw(img)
+
             # Draw the highest temperature text after scaling
             max_index = np.argmax(frame_data)
             max_row, max_col = divmod(max_index, COLS)
@@ -105,15 +108,6 @@ class ThermalCamera(Camera):
 
             _LOGGER.debug(f"Image size: {img.size}, Scale factor: {scale_factor}")
             _LOGGER.debug(f"Text coordinates: ({text_x}, {text_y}), Text: {text}")
-
-            # Use a standard TrueType font, adjusting the size to make it larger
-            try:
-                # Use DejaVuSans if available, set the size to 40 to make the text larger
-                self._font = ImageFont.truetype("DejaVuSans.ttf", 40)
-            except IOError:
-                # If the specified font is not available, use the default (but it won't scale up)
-                _LOGGER.warning("DejaVuSans font not found. Using default font.")
-                self._font = ImageFont.load_default()
 
             # Draw the text with a shadow for visibility
             shadow_offset = 3
