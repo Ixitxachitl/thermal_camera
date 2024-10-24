@@ -191,7 +191,8 @@ class ThermalCamera(Camera):
         combined = Image.alpha_composite(img_rgba, shadow_layer)
 
         # Convert back to RGB (to remove the alpha channel)
-        img.paste(combined.convert("RGB"))
+        img_rgb = combined.convert("RGB")
+        img.paste(img_rgb)
 
         # Reinitialize ImageDraw for drawing on the combined image
         draw = ImageDraw.Draw(img)
