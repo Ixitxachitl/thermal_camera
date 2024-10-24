@@ -48,6 +48,21 @@ class ThermalCamera(Camera):
         """Return the name of the camera."""
         return self._name
 
+    def map_to_color(self, value, min_value, max_value):
+        """Map the thermal value to a color with yellow in the mid-range."""
+        normalized = (value - min_value) / (max_value - min_value)
+        if normalized < 0.5:
+            # Interpolate between blue and yellow
+            b = int(255 * (1 - 2 * normalized))
+            g = int(255 * (2 * normalized))
+            r = 0
+        else:
+            # Interpolate between yellow and red
+            b = 0
+            g = int(255 * (2 * (1 - normalized)))
+            r = int(255 * (2 * (normalized - 0.5)))
+        return (r, g, b)
+
     async def fetch_data(self):
         """Fetch data from the URL and process the frame asynchronously."""
         try:
@@ -92,7 +107,7 @@ class ThermalCamera(Camera):
                 async with self._session.get(font_url) as font_response:
                     font_response.raise_for_status()
                     font_data = await font_response.read()
-                    font = ImageFont.truetype(BytesIO(font_data), 40)  # Adjust font size as needed
+                    font = ImageFont.truetype(BytesIO(font_data), 40)
                     _LOGGER.debug("Google Font loaded successfully.")
             except Exception as e:
                 _LOGGER.error(f"Failed to load Google Font: {e}")
