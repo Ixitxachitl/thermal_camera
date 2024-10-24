@@ -4,6 +4,7 @@ import async_timeout
 from io import BytesIO
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
+import requests  # Import for loading DejaVu font
 from homeassistant.components.camera import Camera, PLATFORM_SCHEMA
 from homeassistant.const import CONF_NAME, CONF_URL
 import voluptuous as vol
@@ -13,6 +14,7 @@ _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_NAME = "Thermal Camera"
 ROWS, COLS = 24, 32
+FONT_PATH = "custom_components/thermal_camera/DejaVuSans-Bold.ttf"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
@@ -42,7 +44,11 @@ class ThermalCamera(Camera):
         self._url = url
         self._session = session
         self._frame = None
-        self._font = ImageFont.load_default()
+        try:
+            self._font = ImageFont.truetype(FONT_PATH, 40)  # Load DejaVu font
+        except IOError:
+            _LOGGER.error("Failed to load DejaVu font, using default font.")
+            self._font = ImageFont.load_default()
 
     @property
     def name(self):
@@ -53,12 +59,10 @@ class ThermalCamera(Camera):
         """Map the thermal value to a color with yellow in the mid-range."""
         normalized = (value - min_value) / (max_value - min_value)
         if normalized < 0.5:
-            # Interpolate between blue and yellow
             b = int(255 * (1 - 2 * normalized))
             g = int(255 * (2 * normalized))
             r = 0
         else:
-            # Interpolate between yellow and red
             b = 0
             g = int(255 * (2 * (1 - normalized)))
             r = int(255 * (2 * (normalized - 0.5)))
