@@ -4,6 +4,7 @@ import async_timeout
 from io import BytesIO
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
+import requests
 from homeassistant.components.camera import Camera, PLATFORM_SCHEMA
 from homeassistant.const import CONF_NAME, CONF_URL
 import voluptuous as vol
@@ -86,22 +87,17 @@ class ThermalCamera(Camera):
             r = int(255 * (2 * (normalized - 0.5)))
         return (r, g, b)
 
-    async def fetch_data(self):
-        """Fetch data from the URL and process the frame asynchronously."""
+    def fetch_data(self):
+        """Fetch data from the URL and process the frame."""
         try:
             _LOGGER.debug("Fetching data from URL: %s", self._url)
-            async with async_timeout.timeout(10):
-                async with self._session.get(f"{self._url}/json") as response:
-                    if response.status != 200:
-                        _LOGGER.error("Error fetching data, status code: %s", response.status)
-                        return
-
-                    data = await response.json()
+            response = requests.get(f"{self._url}/json", timeout=5)
+            response.raise_for_status()
+            data = response.json()
 
             frame_data = np.array(data["frame"]).reshape(ROWS, COLS)
             min_value = data["lowest"]
             max_value = data["highest"]
-
             _LOGGER.debug("Frame data fetched successfully. Min: %s, Max: %s", min_value, max_value)
 
             # Create an RGB image using PIL
