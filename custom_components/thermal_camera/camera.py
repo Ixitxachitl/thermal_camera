@@ -1,4 +1,5 @@
 import logging
+import os
 import aiohttp
 import async_timeout
 from io import BytesIO
@@ -14,7 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_NAME = "Thermal Camera"
 ROWS, COLS = 24, 32
-FONT_PATH = "custom_components/thermal_camera/DejaVuSans-Bold.ttf"
+FONT_PATH = os.path.join(os.path.dirname(__file__), 'DejaVuSans-Bold.ttf')
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
@@ -56,16 +57,20 @@ class ThermalCamera(Camera):
         return self._name
 
     def map_to_color(self, value, min_value, max_value):
-        """Map the thermal value to a color with yellow in the mid-range."""
+        """Map thermal value to a color gradient from dark blue to white."""
         normalized = (value - min_value) / (max_value - min_value)
-        if normalized < 0.5:
-            b = int(255 * (1 - 2 * normalized))
-            g = int(255 * (2 * normalized))
-            r = 0
+        if normalized < 0.17:
+            r, g, b = 0, 0, int(64 + 191 * (normalized / 0.17))  # Dark blue to Blue
+        elif normalized < 0.34:
+            r, g, b = 0, int(255 * ((normalized - 0.17) / 0.17)), 255  # Blue to Green
+        elif normalized < 0.51:
+            r, g, b = 0, 255, int(255 * (1 - (normalized - 0.34) / 0.17))  # Green to Yellow
+        elif normalized < 0.68:
+            r, g, b = int(255 * ((normalized - 0.51) / 0.17)), 255, 0  # Yellow to Orange
+        elif normalized < 0.85:
+            r, g, b = 255, int(255 * (1 - (normalized - 0.68) / 0.17)), 0  # Orange to Red
         else:
-            b = 0
-            g = int(255 * (2 * (1 - normalized)))
-            r = int(255 * (2 * (normalized - 0.5)))
+            r, g, b = 255, int(255 * (1 - (normalized - 0.85) / 0.15)), int(255 * (1 - (normalized - 0.85) / 0.15))  # Red to White
         return (r, g, b)
 
     async def fetch_data(self):
@@ -98,36 +103,106 @@ class ThermalCamera(Camera):
 
             # Scale up the image
             scale_factor = 20
-            img = img.resize((COLS * scale_factor, ROWS * scale_factor), resample=Image.BICUBIC)
+            img = img.resize((COLS * scale_factor, ROWS * scale_factor), resample=Image.NEAREST)
 
             # Reinitialize ImageDraw after scaling
             draw = ImageDraw.Draw(img)
+
+            # Draw a reticle on the pixel with the highest temperature
+            max_index = np.argmax(frame_data)
+            max_row, max_col = divmod(max_index, COLS)
+            reticle_radius = 10
+            draw = ImageDraw.Draw(img)
+            # Draw crosshairs
+            draw.line(
+                [
+                    (max_col * scale_factor, max_row * scale_factor - reticle_radius),
+                    (max_col * scale_factor, max_row * scale_factor + reticle_radius)
+                ],
+                fill="white",
+                width=2
+            )
+            draw.line(
+                [
+                    (max_col * scale_factor - reticle_radius, max_row * scale_factor),
+                    (max_col * scale_factor + reticle_radius, max_row * scale_factor)
+                ],
+                fill="white",
+                width=2
+            )
+            draw.ellipse(
+                [
+                    (max_col * scale_factor - reticle_radius, max_row * scale_factor - reticle_radius),
+                    (max_col * scale_factor + reticle_radius, max_row * scale_factor + reticle_radius)
+                ],
+                outline="black",
+                width=3
+            )
+            draw.ellipse(
+                [
+                    (max_col * scale_factor - reticle_radius + 2, max_row * scale_factor - reticle_radius + 2),
+                    (max_col * scale_factor + reticle_radius - 2, max_row * scale_factor + reticle_radius - 2)
+                ],
+                outline="white",
+                width=2
+            )
 
             # Draw the highest temperature text after scaling
             max_index = np.argmax(frame_data)
             max_row, max_col = divmod(max_index, COLS)
             text = f"{frame_data[max_row, max_col]:.1f}°"
             text_x = min(max_col * scale_factor, img.width - 100)
-            text_y = min(max_row * scale_factor, img.height - 40)
+            text_y = min(max_row * scale_factor + reticle_radius, img.height)
 
             _LOGGER.debug(f"Image size: {img.size}, Scale factor: {scale_factor}")
             _LOGGER.debug(f"Text coordinates: ({text_x}, {text_y}), Text: {text}")
 
-            # Draw the text with a shadow for visibility
-            shadow_offset = 3
-            for dx in range(-shadow_offset, shadow_offset + 1):
-                for dy in range(-shadow_offset, shadow_offset + 1):
-                    if dx != 0 or dy != 0:
-                        draw.text((text_x + dx, text_y + dy), text, fill="black", font=self._font)
-
-            # Draw the main text (white)
-            draw.text((text_x, text_y), text, fill="white", font=self._font)
+            # Draw the text
+            self.draw_text_with_shadow(draw, text_x, text_y, text, self._font)
 
             # Convert to JPEG bytes
             self._frame = self.image_to_jpeg_bytes(img)
             _LOGGER.debug("Image converted to JPEG bytes successfully.")
         except Exception as e:
             _LOGGER.error("Error fetching or processing data: %s", e)
+
+    def draw_text_with_shadow(self, img, text_x, text_y, text, font):
+        """Draw text with both a black border and a semi-transparent shadow."""
+        # Create a separate layer to draw the semi-transparent shadow
+        shadow_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))  # Create a fully transparent RGBA layer
+        shadow_draw = ImageDraw.Draw(shadow_layer)
+
+        # Define shadow properties
+        shadow_offset = 5  # Offset for the shadow
+        shadow_color = (0, 0, 0, 100)  # Semi-transparent black
+
+        # Draw the semi-transparent shadow
+        shadow_draw.text(
+            (text_x + shadow_offset, text_y + shadow_offset),
+            text,
+            font=font,
+            fill=shadow_color
+        )
+
+        # Add the shadow layer to the main image
+        img_rgba = img.convert("RGBA")
+        combined = Image.alpha_composite(img_rgba, shadow_layer)
+
+        # Convert back to RGB (to remove the alpha channel)
+        img.paste(combined.convert("RGB"))
+
+        # Reinitialize ImageDraw for drawing on the combined image
+        draw = ImageDraw.Draw(img)
+
+        # Draw the black border
+        border_offset = 2  # Border thickness
+        for dx in range(-border_offset, border_offset + 1):
+            for dy in range(-border_offset, border_offset + 1):
+                if dx != 0 or dy != 0:
+                    draw.text((text_x + dx, text_y + dy), text, fill="black", font=font)
+
+        # Draw the main text (white) in the center
+        draw.text((text_x, text_y), text, fill="white", font=font)
 
     def image_to_jpeg_bytes(self, img):
         """Convert PIL image to JPEG bytes."""
@@ -148,3 +223,8 @@ class ThermalCamera(Camera):
     def should_poll(self):
         """Camera polling is required."""
         return True
+    
+    async def async_will_remove_from_hass(self):
+        """Called when the entity is about to be removed from Home Assistant."""
+        if self._session is not None:
+            await self._session.close()
