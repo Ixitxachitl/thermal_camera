@@ -8,7 +8,6 @@ from homeassistant.components.camera import Camera, PLATFORM_SCHEMA
 from homeassistant.const import CONF_NAME, CONF_URL
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
-import requests  # Import for synchronous font loading
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,36 +31,46 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         session = aiohttp.ClientSession()
         hass.data["thermal_camera_session"] = session
 
-    async_add_entities([ThermalCamera(name, url, session)], True)
+    # Load the font asynchronously during setup
+    font = await load_font_async(session)
+    if font is None:
+        font = ImageFont.load_default()
+
+    async_add_entities([ThermalCamera(name, url, session, font)], True)
+
+async def load_font_async(session, size=40):
+    """Asynchronously load the Google Font."""
+    try:
+        async with async_timeout.timeout(10):
+            async with session.get(FONT_URL) as response:
+                if response.status != 200:
+                    _LOGGER.error("Error fetching font, status code: %s", response.status)
+                    return None
+                
+                font_data = await response.read()
+                font = ImageFont.truetype(BytesIO(font_data), size)
+                _LOGGER.debug("Google Font loaded successfully.")
+                return font
+    except Exception as e:
+        _LOGGER.error(f"Failed to load Google Font asynchronously: {e}")
+        return None
 
 class ThermalCamera(Camera):
     """Representation of a thermal camera."""
 
-    def __init__(self, name, url, session):
+    def __init__(self, name, url, session, font):
         """Initialize the thermal camera."""
         super().__init__()
         self._name = name
         self._url = url
         self._session = session
         self._frame = None
-        self._font = self.load_font_synchronously()  # Load font synchronously
+        self._font = font
 
     @property
     def name(self):
         """Return the name of the camera."""
         return self._name
-
-    def load_font_synchronously(self, size=40):
-        """Load the Google Font synchronously."""
-        try:
-            font_response = requests.get(FONT_URL, timeout=10)
-            font_response.raise_for_status()
-            font = ImageFont.truetype(BytesIO(font_response.content), size)
-            _LOGGER.debug("Google Font loaded successfully (synchronously).")
-            return font
-        except Exception as e:
-            _LOGGER.error(f"Failed to load Google Font synchronously: {e}")
-            return ImageFont.load_default()
 
     def map_to_color(self, value, min_value, max_value):
         """Map the thermal value to a color with yellow in the mid-range."""
