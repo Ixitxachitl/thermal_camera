@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import aiohttp
@@ -77,7 +78,7 @@ class ThermalCamera(Camera):
         """Fetch data from the URL and process the frame asynchronously."""
         try:
             _LOGGER.debug("Fetching data from URL: %s", self._url)
-            async with async_timeout.timeout(10):
+            async with async_timeout.timeout(20):
                 async with self._session.get(f"{self._url}/json") as response:
                     if response.status != 200:
                         _LOGGER.error("Error fetching data, status code: %s", response.status)
@@ -213,6 +214,7 @@ class ThermalCamera(Camera):
     async def async_camera_image(self, width=None, height=None):
         """Return the camera image asynchronously."""
         await self.fetch_data()
+        await asyncio.sleep(0.5) 
         return self._frame
 
     def stream_source(self):
