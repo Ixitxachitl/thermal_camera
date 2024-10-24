@@ -105,62 +105,52 @@ class ThermalCamera(Camera):
             scale_factor = 20
             img = img.resize((COLS * scale_factor, ROWS * scale_factor), resample=Image.NEAREST)
 
-            # Reinitialize ImageDraw after scaling
+            # Reinitialize ImageDraw after resizing
             draw = ImageDraw.Draw(img)
 
             # Draw a reticle on the pixel with the highest temperature
             max_index = np.argmax(frame_data)
             max_row, max_col = divmod(max_index, COLS)
-            reticle_radius = 15
+
+            # Scale the coordinates
             center_x = (max_col + 0.5) * scale_factor
             center_y = (max_row + 0.5) * scale_factor
-            draw = ImageDraw.Draw(img)
+            reticle_radius = 10
+
+            # Draw crosshairs and reticle (keeping everything in RGB mode)
+            draw.line(
+                [(center_x, center_y - reticle_radius), (center_x, center_y + reticle_radius)],
+                fill="white",
+                width=2
+            )
+            draw.line(
+                [(center_x - reticle_radius, center_y), (center_x + reticle_radius, center_y)],
+                fill="white",
+                width=2
+            )
             draw.ellipse(
-                [
-                    (center_x - reticle_radius, center_y - reticle_radius),
-                    (center_x + reticle_radius, center_y + reticle_radius)
-                ],
+                [(center_x - reticle_radius, center_y - reticle_radius), 
+                 (center_x + reticle_radius, center_y + reticle_radius)],
                 outline="black",
                 width=3
             )
             draw.ellipse(
-                [
-                    (center_x - reticle_radius + 2, center_y - reticle_radius + 2),
-                    (center_x + reticle_radius - 2, center_y + reticle_radius - 2)
-                ],
+                [(center_x - reticle_radius + 2, center_y - reticle_radius + 2),
+                 (center_x + reticle_radius - 2, center_y + reticle_radius - 2)],
                 outline="white",
-                width=2
-            )
-            # Draw crosshairs
-            draw.line(
-                [
-                    (center_x, center_y - reticle_radius),
-                    (center_x, center_y + reticle_radius)
-                ],
-                fill="white",
-                width=2
-            )
-            draw.line(
-                [
-                    (center_x - reticle_radius, center_y),
-                    (center_x + reticle_radius, center_y)
-                ],
-                fill="white",
                 width=2
             )
 
             # Draw the highest temperature text after scaling
-            max_index = np.argmax(frame_data)
-            max_row, max_col = divmod(max_index, COLS)
             text = f"{frame_data[max_row, max_col]:.1f}°"
-            text_x = min(max_col * scale_factor, img.width - 100)
-            text_y = min(max_row * scale_factor + reticle_radius, img.height)
+            text_x = min(center_x, img.width - 100)
+            text_y = min(center_y + reticle_radius, img.height)
 
             _LOGGER.debug(f"Image size: {img.size}, Scale factor: {scale_factor}")
             _LOGGER.debug(f"Text coordinates: ({text_x}, {text_y}), Text: {text}")
 
-            # Draw the text
-            self.draw_text_with_shadow(draw, text_x, text_y, text, self._font)
+            # Draw the text with shadow
+            self.draw_text_with_shadow(img, text_x, text_y, text, self._font)
 
             # Convert to JPEG bytes
             self._frame = self.image_to_jpeg_bytes(img)
@@ -226,7 +216,7 @@ class ThermalCamera(Camera):
     def should_poll(self):
         """Camera polling is required."""
         return True
-    
+
     async def async_will_remove_from_hass(self):
         """Called when the entity is about to be removed from Home Assistant."""
         if self._session is not None:
