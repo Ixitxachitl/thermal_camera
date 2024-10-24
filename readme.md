@@ -74,7 +74,6 @@ The motion detection sensor calculates the difference between the "highest" and 
 
 ## Development
 
-- This integration uses a dynamic Google Font for text overlays, downloaded at runtime.
 - Adjustments can be made in the camera.py code to change the font, scaling, or color mapping logic.
 - For the motion detection sensor, you can customize the temperature difference threshold in the code to fine-tune sensitivity.
 
