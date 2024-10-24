@@ -48,8 +48,9 @@ The integration expects to fetch thermal data from the URL provided in the confi
 
 ````json
 {
-  "highest": 87.9,
-  "lowest": 67.3,
+  "average": 78.7,
+  "highest": 82.8,
+  "lowest": 67.2,
   "frame": [
     80.2, 80.4, 83.4, 83.3, ..., 68.6, 67.8  // A 768-element array (32x24)
   ]
