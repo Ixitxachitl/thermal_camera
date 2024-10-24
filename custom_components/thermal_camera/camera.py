@@ -92,28 +92,30 @@ class ThermalCamera(Camera):
                     draw.point((c, r), fill=color)
 
             # Scale up the image
-            scale_factor = 20  # Adjust scale factor for better visibility
+            scale_factor = 20
             img = img.resize((COLS * scale_factor, ROWS * scale_factor), resample=Image.BICUBIC)
 
-            # Draw the highest temperature text
+            # Draw the highest temperature text after scaling
             max_index = np.argmax(frame_data)
             max_row, max_col = divmod(max_index, COLS)
-            text = f"{frame_data[max_row, max_col]:.1f}"
-            text_x, text_y = max_col * scale_factor, max_row * scale_factor
+            text = f"{frame_data[max_row, max_col]:.1f}°"
+            text_x = min(max_col * scale_factor, img.width - 100)
+            text_y = min(max_row * scale_factor, img.height - 40)
 
-            # Load Google Font
+            # Load Google Font for text
             font_url = "https://github.com/google/fonts/raw/main/ofl/spacemono/SpaceMono-Regular.ttf"
             try:
                 async with self._session.get(font_url) as font_response:
                     font_response.raise_for_status()
                     font_data = await font_response.read()
-                    font = ImageFont.truetype(BytesIO(font_data), 40)
+                    font = ImageFont.truetype(BytesIO(font_data), 60)  # Increased font size
                     _LOGGER.debug("Google Font loaded successfully.")
             except Exception as e:
                 _LOGGER.error(f"Failed to load Google Font: {e}")
                 font = ImageFont.load_default()
+                _LOGGER.debug("Using default font.")
 
-            # Draw the text with a shadow for better visibility
+            # Draw the text with a shadow for visibility
             shadow_offset = 3
             for dx in range(-shadow_offset, shadow_offset + 1):
                 for dy in range(-shadow_offset, shadow_offset + 1):
