@@ -58,21 +58,34 @@ class ThermalCamera(Camera):
         return self._name
 
     def map_to_color(self, value, min_value, max_value):
-        """Map thermal value to a color gradient from dark blue to white."""
-        normalized = (value - min_value) / (max_value - min_value)
-        if normalized < 0.17:
-            r, g, b = 0, 0, int(64 + 191 * (normalized / 0.17))  # Dark blue to Blue
-        elif normalized < 0.34:
-            r, g, b = 0, int(255 * ((normalized - 0.17) / 0.17)), 255  # Blue to Green
-        elif normalized < 0.51:
-            r, g, b = 0, 255, int(255 * (1 - (normalized - 0.34) / 0.17))  # Green to Yellow
-        elif normalized < 0.68:
-            r, g, b = int(255 * ((normalized - 0.51) / 0.17)), 255, 0  # Yellow to Orange
-        elif normalized < 0.85:
-            r, g, b = 255, int(255 * (1 - (normalized - 0.68) / 0.17)), 0  # Orange to Red
-        else:
-            r, g, b = 255, int(255 * (1 - (normalized - 0.85) / 0.15)), int(255 * (1 - (normalized - 0.85) / 0.15))  # Red to White
-        return (r, g, b)
+        """Map thermal value to a simplified color gradient from black to white."""
+        # Normalize the value between 0 and 1
+        normalized = max(0.0, min(1.0, (value - min_value) / (max_value - min_value)))
+
+        # Define the gradient mapping
+        if normalized < 0.2:  # Black to Blue
+            r = 0
+            g = 0
+            b = int(255 * (normalized / 0.2))
+        elif normalized < 0.4:  # Blue to Green
+            r = 0
+            g = int(255 * ((normalized - 0.2) / 0.2))
+            b = 255
+        elif normalized < 0.6:  # Green to Yellow
+            r = int(255 * ((normalized - 0.4) / 0.2))
+            g = 255
+            b = 0
+        elif normalized < 0.8:  # Yellow to Red
+            r = 255
+            g = int(255 * (1 - (normalized - 0.6) / 0.2))
+            b = 0
+        else:  # Red to White
+            r = 255
+            g = int(255 * ((normalized - 0.8) / 0.2))
+            b = int(255 * ((normalized - 0.8) / 0.2))
+
+        # Convert to integers and return RGB tuple
+        return (int(r), int(g), int(b))
 
     async def fetch_data(self):
         """Fetch data from the URL and process the frame asynchronously."""
@@ -118,30 +131,24 @@ class ThermalCamera(Camera):
             # Scale the coordinates
             center_x = (max_col + 0.5) * scale_factor
             center_y = (max_row + 0.5) * scale_factor
-            reticle_radius = 10
+            reticle_radius = 9
 
             # Draw crosshairs and reticle (keeping everything in RGB mode)
             _LOGGER.debug("Drawing reticle at coordinates: (%s, %s)", center_x, center_y)
             draw.line(
                 [(center_x, center_y - reticle_radius), (center_x, center_y + reticle_radius)],
-                fill="white",
+                fill="red",
                 width=1
             )
             draw.line(
                 [(center_x - reticle_radius, center_y), (center_x + reticle_radius, center_y)],
-                fill="white",
+                fill="red",
                 width=1
-            )
-            draw.ellipse(
-                [(center_x - reticle_radius, center_y - reticle_radius), 
-                (center_x + reticle_radius, center_y + reticle_radius)],
-                outline="black",
-                width=2
             )
             draw.ellipse(
                 [(center_x - reticle_radius + 2, center_y - reticle_radius + 2),
                 (center_x + reticle_radius - 2, center_y + reticle_radius - 2)],
-                outline="white",
+                outline="red",
                 width=1
             )
 
