@@ -12,5 +12,6 @@
   "codeowners": ["@Ixitxachitl"],
   "iot_class": "local_polling",
   "supported_brands": ["M5Stack"],
-  "integration_type": "device"
+  "integration_type": "device",
+  "icon": "icon.png"
 }
