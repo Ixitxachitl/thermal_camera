@@ -8,11 +8,13 @@ from homeassistant.components.camera import Camera, PLATFORM_SCHEMA
 from homeassistant.const import CONF_NAME, CONF_URL
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
+import requests  # Import for synchronous font loading
 
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_NAME = "Thermal Camera"
 ROWS, COLS = 24, 32
+FONT_URL = "https://github.com/google/fonts/raw/main/ofl/spacemono/SpaceMono-Regular.ttf"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
@@ -42,11 +44,24 @@ class ThermalCamera(Camera):
         self._url = url
         self._session = session
         self._frame = None
+        self._font = self.load_font_synchronously()  # Load font synchronously
 
     @property
     def name(self):
         """Return the name of the camera."""
         return self._name
+
+    def load_font_synchronously(self, size=40):
+        """Load the Google Font synchronously."""
+        try:
+            font_response = requests.get(FONT_URL, timeout=10)
+            font_response.raise_for_status()
+            font = ImageFont.truetype(BytesIO(font_response.content), size)
+            _LOGGER.debug("Google Font loaded successfully (synchronously).")
+            return font
+        except Exception as e:
+            _LOGGER.error(f"Failed to load Google Font synchronously: {e}")
+            return ImageFont.load_default()
 
     def map_to_color(self, value, min_value, max_value):
         """Map the thermal value to a color with yellow in the mid-range."""
@@ -102,26 +117,15 @@ class ThermalCamera(Camera):
             text_x = min(max_col * scale_factor, img.width - 100)
             text_y = min(max_row * scale_factor, img.height - 40)
 
-            # Download and load the Google Font
-            font_url = "https://github.com/google/fonts/raw/main/ofl/spacemono/SpaceMono-Regular.ttf"
-            try:
-                font_response = requests.get(font_url, timeout=10)
-                font_response.raise_for_status()
-                font = ImageFont.truetype(BytesIO(font_response.content), 40)  # Adjust font size as needed
-                _LOGGER.debug("Google Font loaded successfully.")
-            except Exception as e:
-                _LOGGER.error(f"Failed to load Google Font: {e}")
-                font = ImageFont.load_default()
-
             # Draw the text with a shadow for visibility
             shadow_offset = 3
             for dx in range(-shadow_offset, shadow_offset + 1):
                 for dy in range(-shadow_offset, shadow_offset + 1):
                     if dx != 0 or dy != 0:
-                        draw.text((text_x + dx, text_y + dy), text, fill="black", font=font)
+                        draw.text((text_x + dx, text_y + dy), text, fill="black", font=self._font)
 
             # Draw the main text (white)
-            draw.text((text_x, text_y), text, fill="white", font=font)
+            draw.text((text_x, text_y), text, fill="white", font=self._font)
 
             # Convert to JPEG bytes
             self._frame = self.image_to_jpeg_bytes(img)
