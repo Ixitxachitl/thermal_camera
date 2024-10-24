@@ -143,6 +143,9 @@ class ThermalCamera(Camera):
             # Draw the main text (white)
             draw.text((text_x, text_y), text, fill="white", font=self._font)
 
+            text_x, text_y = 50, 50  # Force fixed position for debugging
+            draw.text((text_x, text_y), text, fill="red", font=self._font)
+
             # Convert to JPEG bytes
             self._frame = self.image_to_jpeg_bytes(img)
             _LOGGER.debug("Image converted to JPEG bytes successfully.")
@@ -155,9 +158,9 @@ class ThermalCamera(Camera):
             img.save(output, format="JPEG")
             return output.getvalue()
 
-    async def async_camera_image(self, width=None, height=None):
-        """Return the camera image asynchronously."""
-        await self.fetch_data()
+    def camera_image(self, width=None, height=None):
+        """Return the camera image synchronously."""
+        self.fetch_data()
         return self._frame
 
     def stream_source(self):
