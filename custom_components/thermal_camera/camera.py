@@ -125,7 +125,8 @@ class ThermalCamera(Camera):
             text_x = min(max_col * scale_factor, img.width - 100)
             text_y = min(max_row * scale_factor, img.height - 40)
 
-            _LOGGER.debug(f"Drawing text at ({text_x}, {text_y}) with font {self._font}")
+            _LOGGER.debug(f"Image size: {img.size}, Scale factor: {scale_factor}")
+            _LOGGER.debug(f"Text coordinates: ({text_x}, {text_y}), Text: {text}")
 
             # Ensure the font is loaded
             if not self._font:
