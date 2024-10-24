@@ -4,7 +4,6 @@ import async_timeout
 from io import BytesIO
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-import requests
 from homeassistant.components.camera import Camera, PLATFORM_SCHEMA
 from homeassistant.const import CONF_NAME, CONF_URL
 import voluptuous as vol
@@ -14,7 +13,6 @@ _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_NAME = "Thermal Camera"
 ROWS, COLS = 24, 32
-FONT_URL = "https://github.com/google/fonts/raw/main/ofl/spacemono/SpaceMono-Regular.ttf"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
@@ -32,42 +30,19 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         session = aiohttp.ClientSession()
         hass.data["thermal_camera_session"] = session
 
-    # Load the font asynchronously during setup
-    font = await load_font_async(session)
-    if font is None:
-        font = ImageFont.load_default()
-    _LOGGER.debug(f"Font loaded: {font}")
-
-    async_add_entities([ThermalCamera(name, url, session, font)], True)
-
-async def load_font_async(session, size=40):
-    """Asynchronously load the Google Font."""
-    try:
-        async with async_timeout.timeout(10):
-            async with session.get(FONT_URL) as response:
-                if response.status != 200:
-                    _LOGGER.error("Error fetching font, status code: %s", response.status)
-                    return None
-
-                font_data = await response.read()
-                font = ImageFont.truetype(BytesIO(font_data), size)
-                _LOGGER.debug("Google Font loaded successfully.")
-                return font
-    except Exception as e:
-        _LOGGER.error(f"Failed to load Google Font asynchronously: {e}")
-        return None
+    async_add_entities([ThermalCamera(name, url, session)], True)
 
 class ThermalCamera(Camera):
     """Representation of a thermal camera."""
 
-    def __init__(self, name, url, session, font):
+    def __init__(self, name, url, session):
         """Initialize the thermal camera."""
         super().__init__()
         self._name = name
         self._url = url
         self._session = session
         self._frame = None
-        self._font = font
+        self._font = ImageFont.load_default()
 
     @property
     def name(self):
@@ -78,26 +53,33 @@ class ThermalCamera(Camera):
         """Map the thermal value to a color with yellow in the mid-range."""
         normalized = (value - min_value) / (max_value - min_value)
         if normalized < 0.5:
+            # Interpolate between blue and yellow
             b = int(255 * (1 - 2 * normalized))
             g = int(255 * (2 * normalized))
             r = 0
         else:
+            # Interpolate between yellow and red
             b = 0
             g = int(255 * (2 * (1 - normalized)))
             r = int(255 * (2 * (normalized - 0.5)))
         return (r, g, b)
 
-    def fetch_data(self):
-        """Fetch data from the URL and process the frame."""
+    async def fetch_data(self):
+        """Fetch data from the URL and process the frame asynchronously."""
         try:
             _LOGGER.debug("Fetching data from URL: %s", self._url)
-            response = requests.get(f"{self._url}/json", timeout=5)
-            response.raise_for_status()
-            data = response.json()
+            async with async_timeout.timeout(10):
+                async with self._session.get(f"{self._url}/json") as response:
+                    if response.status != 200:
+                        _LOGGER.error("Error fetching data, status code: %s", response.status)
+                        return
+
+                    data = await response.json()
 
             frame_data = np.array(data["frame"]).reshape(ROWS, COLS)
             min_value = data["lowest"]
             max_value = data["highest"]
+
             _LOGGER.debug("Frame data fetched successfully. Min: %s, Max: %s", min_value, max_value)
 
             # Create an RGB image using PIL
@@ -124,9 +106,13 @@ class ThermalCamera(Camera):
             _LOGGER.debug(f"Image size: {img.size}, Scale factor: {scale_factor}")
             _LOGGER.debug(f"Text coordinates: ({text_x}, {text_y}), Text: {text}")
 
-            # Ensure the font is loaded
-            if not self._font:
-                _LOGGER.error("Font is not loaded, using default.")
+            # Use a standard TrueType font, adjusting the size to make it larger
+            try:
+                # Use DejaVuSans if available, set the size to 40 to make the text larger
+                self._font = ImageFont.truetype("DejaVuSans.ttf", 40)
+            except IOError:
+                # If the specified font is not available, use the default (but it won't scale up)
+                _LOGGER.warning("DejaVuSans font not found. Using default font.")
                 self._font = ImageFont.load_default()
 
             # Draw the text with a shadow for visibility
@@ -138,9 +124,6 @@ class ThermalCamera(Camera):
 
             # Draw the main text (white)
             draw.text((text_x, text_y), text, fill="white", font=self._font)
-
-            text_x, text_y = 50, 50  # Force fixed position for debugging
-            draw.text((text_x, text_y), text, fill="red", font=self._font)
 
             # Convert to JPEG bytes
             self._frame = self.image_to_jpeg_bytes(img)
@@ -154,9 +137,9 @@ class ThermalCamera(Camera):
             img.save(output, format="JPEG")
             return output.getvalue()
 
-    def camera_image(self, width=None, height=None):
-        """Return the camera image synchronously."""
-        self.fetch_data()
+    async def async_camera_image(self, width=None, height=None):
+        """Return the camera image asynchronously."""
+        await self.fetch_data()
         return self._frame
 
     def stream_source(self):
