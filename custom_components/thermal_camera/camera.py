@@ -146,8 +146,13 @@ class ThermalCamera(Camera):
 
             # Draw the highest temperature text after scaling
             text = f"{frame_data[max_row, max_col]:.1f}°"
-            text_x = min(max(center_x, 0), img.width - 100)
-            text_y = min(max(center_y + reticle_radius, 0), img.height)
+            if max_row >= ROWS - 3:
+                # If the reticle is in the bottom three rows, move the text above the reticle
+                text_y = max(center_y - 80, 0)
+            else:
+                # Otherwise, place the text below the reticle
+                text_y = min(center_y + reticle_radius, img.height)
+            text_x = min(max(center_x, 0), img.width - 120)
 
             _LOGGER.debug(f"Text coordinates: ({text_x}, {text_y}), Text: {text}")
 
