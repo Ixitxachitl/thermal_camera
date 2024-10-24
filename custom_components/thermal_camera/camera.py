@@ -125,24 +125,24 @@ class ThermalCamera(Camera):
             draw.line(
                 [(center_x, center_y - reticle_radius), (center_x, center_y + reticle_radius)],
                 fill="white",
-                width=2
+                width=1
             )
             draw.line(
                 [(center_x - reticle_radius, center_y), (center_x + reticle_radius, center_y)],
                 fill="white",
-                width=2
+                width=1
             )
             draw.ellipse(
                 [(center_x - reticle_radius, center_y - reticle_radius), 
                 (center_x + reticle_radius, center_y + reticle_radius)],
                 outline="black",
-                width=3
+                width=2
             )
             draw.ellipse(
                 [(center_x - reticle_radius + 2, center_y - reticle_radius + 2),
                 (center_x + reticle_radius - 2, center_y + reticle_radius - 2)],
                 outline="white",
-                width=2
+                width=1
             )
 
             # Draw the highest temperature text after scaling
