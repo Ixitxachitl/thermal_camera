@@ -111,39 +111,41 @@ class ThermalCamera(Camera):
             # Draw a reticle on the pixel with the highest temperature
             max_index = np.argmax(frame_data)
             max_row, max_col = divmod(max_index, COLS)
-            reticle_radius = 10
+            reticle_radius = 15
+            center_x = (max_col + 0.5) * scale_factor
+            center_y = (max_row + 0.5) * scale_factor
             draw = ImageDraw.Draw(img)
-            # Draw crosshairs
-            draw.line(
-                [
-                    (max_col * scale_factor, max_row * scale_factor - reticle_radius),
-                    (max_col * scale_factor, max_row * scale_factor + reticle_radius)
-                ],
-                fill="white",
-                width=2
-            )
-            draw.line(
-                [
-                    (max_col * scale_factor - reticle_radius, max_row * scale_factor),
-                    (max_col * scale_factor + reticle_radius, max_row * scale_factor)
-                ],
-                fill="white",
-                width=2
-            )
             draw.ellipse(
                 [
-                    (max_col * scale_factor - reticle_radius, max_row * scale_factor - reticle_radius),
-                    (max_col * scale_factor + reticle_radius, max_row * scale_factor + reticle_radius)
+                    (center_x - reticle_radius, center_y - reticle_radius),
+                    (center_x + reticle_radius, center_y + reticle_radius)
                 ],
                 outline="black",
                 width=3
             )
             draw.ellipse(
                 [
-                    (max_col * scale_factor - reticle_radius + 2, max_row * scale_factor - reticle_radius + 2),
-                    (max_col * scale_factor + reticle_radius - 2, max_row * scale_factor + reticle_radius - 2)
+                    (center_x - reticle_radius + 2, center_y - reticle_radius + 2),
+                    (center_x + reticle_radius - 2, center_y + reticle_radius - 2)
                 ],
                 outline="white",
+                width=2
+            )
+            # Draw crosshairs
+            draw.line(
+                [
+                    (center_x, center_y - reticle_radius),
+                    (center_x, center_y + reticle_radius)
+                ],
+                fill="white",
+                width=2
+            )
+            draw.line(
+                [
+                    (center_x - reticle_radius, center_y),
+                    (center_x + reticle_radius, center_y)
+                ],
+                fill="white",
                 width=2
             )
 
