@@ -6,7 +6,6 @@ import async_timeout
 from io import BytesIO
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-import requests  # Import for loading DejaVu font
 from homeassistant.components.camera import Camera, PLATFORM_SCHEMA
 from homeassistant.const import CONF_NAME, CONF_URL
 import voluptuous as vol
@@ -15,18 +14,56 @@ import homeassistant.helpers.config_validation as cv
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_NAME = "Thermal Camera"
-ROWS, COLS = 24, 32
+DEFAULT_ROWS, DEFAULT_COLS = 24, 32
+DEFAULT_PATH = "json"
+DEFAULT_DATA_FIELD = "frame"
+DEFAULT_LOW_FIELD = "lowest"
+DEFAULT_HIGH_FIELD = "highest"
+DEFAULT_RESAMPLE_METHOD = "NEAREST"
 FONT_PATH = os.path.join(os.path.dirname(__file__), 'DejaVuSans-Bold.ttf')
+
+CONF_DIMENSIONS = "dimensions"
+CONF_ROWS = "rows"
+CONF_COLUMNS = "columns"
+CONF_PATH = "path"
+CONF_DATA_FIELD = "data_field"
+CONF_LOW_FIELD = "low_field"
+CONF_HIGH_FIELD = "high_field"
+CONF_RESAMPLE = "resample"
+
+RESAMPLE_METHODS = {
+    "NEAREST": Image.NEAREST,
+    "BILINEAR": Image.BILINEAR,
+    "BICUBIC": Image.BICUBIC,
+    "LANCZOS": Image.LANCZOS,
+}
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
     vol.Required(CONF_URL): cv.url,
+    vol.Optional(CONF_DIMENSIONS, default={}): vol.Schema({
+        vol.Optional(CONF_ROWS, default=DEFAULT_ROWS): cv.positive_int,
+        vol.Optional(CONF_COLUMNS, default=DEFAULT_COLS): cv.positive_int,
+    }),
+    vol.Optional(CONF_PATH, default=DEFAULT_PATH): cv.string,
+    vol.Optional(CONF_DATA_FIELD, default=DEFAULT_DATA_FIELD): cv.string,
+    vol.Optional(CONF_LOW_FIELD, default=DEFAULT_LOW_FIELD): cv.string,
+    vol.Optional(CONF_HIGH_FIELD, default=DEFAULT_HIGH_FIELD): cv.string,
+    vol.Optional(CONF_RESAMPLE, default=DEFAULT_RESAMPLE_METHOD): vol.In(RESAMPLE_METHODS.keys()),
 })
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the thermal camera platform asynchronously."""
     name = config.get(CONF_NAME)
     url = config.get(CONF_URL)
+    dimensions = config.get(CONF_DIMENSIONS)
+    rows = dimensions.get(CONF_ROWS, DEFAULT_ROWS)
+    cols = dimensions.get(CONF_COLUMNS, DEFAULT_COLS)
+    path = config.get(CONF_PATH)
+    data_field = config.get(CONF_DATA_FIELD)
+    low_field = config.get(CONF_LOW_FIELD)
+    high_field = config.get(CONF_HIGH_FIELD)
+    resample_method = RESAMPLE_METHODS[config.get(CONF_RESAMPLE)]
 
     # Reuse or create a persistent session for this platform
     session = hass.data.get("thermal_camera_session")
@@ -34,16 +71,23 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         session = aiohttp.ClientSession()
         hass.data["thermal_camera_session"] = session
 
-    async_add_entities([ThermalCamera(name, url, session)], True)
+    async_add_entities([ThermalCamera(name, url, rows, cols, path, data_field, low_field, high_field, resample_method, session)], True)
 
 class ThermalCamera(Camera):
     """Representation of a thermal camera."""
 
-    def __init__(self, name, url, session):
+    def __init__(self, name, url, rows, cols, path, data_field, low_field, high_field, resample_method, session):
         """Initialize the thermal camera."""
         super().__init__()
         self._name = name
         self._url = url
+        self._rows = rows
+        self._cols = cols
+        self._path = path
+        self._data_field = data_field
+        self._low_field = low_field
+        self._high_field = high_field
+        self._resample_method = resample_method
         self._session = session
         self._frame = None
         try:
@@ -92,33 +136,33 @@ class ThermalCamera(Camera):
         try:
             _LOGGER.debug("Fetching data from URL: %s", self._url)
             async with async_timeout.timeout(20):
-                async with self._session.get(f"{self._url}/json") as response:
+                async with self._session.get(f"{self._url}/{self._path}") as response:
                     if response.status != 200:
                         _LOGGER.error("Error fetching data, status code: %s", response.status)
                         return
 
                     data = await response.json()
 
-            frame_data = np.array(data["frame"]).reshape(ROWS, COLS)
-            min_value = data["lowest"]
-            max_value = data["highest"]
+            frame_data = np.array(data[self._data_field]).reshape(self._rows, self._cols)
+            min_value = data[self._low_field]
+            max_value = data[self._high_field]
 
             _LOGGER.debug("Frame data fetched successfully. Min: %s, Max: %s", min_value, max_value)
 
             # Create an RGB image using PIL
-            img = Image.new("RGB", (COLS, ROWS))
+            img = Image.new("RGB", (self._cols, self._rows))
             _LOGGER.debug("Initial image created. Image mode: %s, Image size: %s", img.mode, img.size)
             draw = ImageDraw.Draw(img)
 
             # Map frame data to colors
-            for r in range(ROWS):
-                for c in range(COLS):
+            for r in range(self._rows):
+                for c in range(self._cols):
                     color = self.map_to_color(frame_data[r, c], min_value, max_value)
                     draw.point((c, r), fill=color)
 
             # Scale up the image
             scale_factor = 20
-            img = img.resize((COLS * scale_factor, ROWS * scale_factor), resample=Image.NEAREST)
+            img = img.resize((self._cols * scale_factor, self._rows * scale_factor), resample=self._resample_method)
             _LOGGER.debug("Image resized. New size: %s", img.size)
 
             # Reinitialize ImageDraw after resizing
@@ -126,7 +170,7 @@ class ThermalCamera(Camera):
 
             # Draw a reticle on the pixel with the highest temperature
             max_index = np.argmax(frame_data)
-            max_row, max_col = divmod(max_index, COLS)
+            max_row, max_col = divmod(max_index, self._cols)
 
             # Scale the coordinates
             center_x = (max_col + 0.5) * scale_factor
@@ -154,7 +198,7 @@ class ThermalCamera(Camera):
 
             # Draw the highest temperature text after scaling
             text = f"{frame_data[max_row, max_col]:.1f}°"
-            if max_row >= ROWS - 3:
+            if max_row >= self._rows - 3:
                 # If the reticle is in the bottom three rows, move the text above the reticle
                 text_y = max(center_y - 50, 0)
             else:
@@ -221,7 +265,7 @@ class ThermalCamera(Camera):
     async def async_camera_image(self, width=None, height=None):
         """Return the camera image asynchronously."""
         await self.fetch_data()
-        await asyncio.sleep(0.5) 
+        await asyncio.sleep(0.5)
         return self._frame
 
     def stream_source(self):
