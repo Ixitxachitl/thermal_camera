@@ -20,9 +20,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     await hass.config_entries.async_forward_entry_setups(config_entry, ["camera"])
     await hass.config_entries.async_forward_entry_setups(config_entry, ["binary_sensor"])
 
-    # Set up the binary sensor entity
-    
-
     return True
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
