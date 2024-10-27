@@ -47,7 +47,24 @@ class ThermalCameraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception:
                 errors["base"] = "cannot_connect"
 
-        return self.async_show_form(step_id="user", data_schema=CONFIG_SCHEMA, errors=errors)
+        return self.async_show_form(
+            step_id="user",
+            data_schema=CONFIG_SCHEMA,
+            errors=errors,
+            description_placeholders={
+                "url": "The URL of the device providing the thermal data.",
+                "name": "The name of the thermal camera.",
+                "rows": "Number of rows in the thermal frame.",
+                "columns": "Number of columns in the thermal frame.",
+                "path": "URL path to access the JSON data.",
+                "data_field": "JSON field name containing the thermal frame data.",
+                "low_field": "JSON field name containing the lowest temperature value.",
+                "highest_field": "JSON field name containing the highest temperature value.",
+                "average_field": "JSON field name containing the average temperature value.",
+                "resample": "Resampling method for resizing the thermal image.",
+                "motion_threshold": "Temperature difference threshold for motion detection."
+            }
+        )
 
     @staticmethod
     @callback
@@ -82,4 +99,20 @@ class ThermalCameraOptionsFlowHandler(config_entries.OptionsFlow):
             vol.Optional("motion_threshold", default=self.config_entry.data.get("motion_threshold", DEFAULT_MOTION_THRESHOLD)): int,
         })
 
-        return self.async_show_form(step_id="init", data_schema=options_schema)
+        return self.async_show_form(
+            step_id="init",
+            data_schema=options_schema,
+            description_placeholders={
+                "url": "The URL of the device providing the thermal data.",
+                "name": "The name of the thermal camera.",
+                "rows": "Number of rows in the thermal frame.",
+                "columns": "Number of columns in the thermal frame.",
+                "path": "URL path to access the JSON data.",
+                "data_field": "JSON field name containing the thermal frame data.",
+                "low_field": "JSON field name containing the lowest temperature value.",
+                "highest_field": "JSON field name containing the highest temperature value.",
+                "average_field": "JSON field name containing the average temperature value.",
+                "resample": "Resampling method for resizing the thermal image.",
+                "motion_threshold": "Temperature difference threshold for motion detection."
+            }
+        )
