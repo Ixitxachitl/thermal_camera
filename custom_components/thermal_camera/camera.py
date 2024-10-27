@@ -46,9 +46,13 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         session = aiohttp.ClientSession()
         hass.data["thermal_camera_session"] = session
 
-    async_add_entities([ThermalCamera(name, url, rows, cols, path, data_field, low_field, high_field, resample_method, session)], True)
+    async_add_entities([ThermalCamera(name, url, rows, cols, path, data_field, low_field, high_field, resample_method, session, config_entry=config_entry)], True)
 
 class ThermalCamera(Camera):
+    """Representation of a thermal camera."""
+    def __init__(self, name, url, rows, cols, path, data_field, low_field, high_field, resample_method, session, config_entry=None):
+        super().__init__()
+        self._config_entry = config_entry
     """Representation of a thermal camera."""
 
     def __init__(self, name, url, rows, cols, path, data_field, low_field, high_field, resample_method, session):
@@ -106,6 +110,16 @@ class ThermalCamera(Camera):
         except asyncio.CancelledError:
             pass
         return response
+
+    @property
+    def device_info(self):
+        """Return device information to group camera and binary sensor."""
+        return {
+            "identifiers": {(DOMAIN, self._config_entry.entry_id)},
+            "name": self._config_entry.data.get("name", DEFAULT_NAME),
+            "manufacturer": "Your Manufacturer",
+            "model": "Thermal Camera",
+        }
 
     @property
     def name(self):

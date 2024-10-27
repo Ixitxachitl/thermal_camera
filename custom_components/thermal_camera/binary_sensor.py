@@ -26,9 +26,13 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         session = aiohttp.ClientSession()
         hass.data["thermal_camera_session"] = session
 
-    async_add_entities([ThermalMotionSensor(name, url, path, motion_threshold, average_field, highest_field, session)])
+    async_add_entities([ThermalMotionSensor(name, url, path, motion_threshold, average_field, highest_field, session, config_entry=config_entry)])
 
 class ThermalMotionSensor(BinarySensorEntity):
+    """Representation of a thermal motion detection sensor."""
+    def __init__(self, name, url, path, motion_threshold, average_field, highest_field, session, config_entry=None):
+        super().__init__()
+        self._config_entry = config_entry
     """Representation of a thermal motion detection sensor."""
 
     def __init__(self, name, url, path, motion_threshold, average_field, highest_field, session):
@@ -40,6 +44,16 @@ class ThermalMotionSensor(BinarySensorEntity):
         self._highest_field = highest_field
         self._is_on = False
         self._session = session
+
+    @property
+    def device_info(self):
+        """Return device information to group camera and binary sensor."""
+        return {
+            "identifiers": {(DOMAIN, self._config_entry.entry_id)},
+            "name": self._config_entry.data.get("name", DEFAULT_NAME),
+            "manufacturer": "Your Manufacturer",
+            "model": "Thermal Motion Sensor",
+        }
 
     @property
     def name(self):
