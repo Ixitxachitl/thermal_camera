@@ -25,8 +25,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     # Unload the camera and binary sensor entities
-    unload_ok = unload_ok = await hass.config_entries.async_forward_entry_unload(config_entry, "camera")
-    unload_ok = await hass.config_entries.async_forward_entry_unload(config_entry, "binary_sensor") and unload_ok
+    unload_camera = await hass.config_entries.async_forward_entry_unload(config_entry, "camera")
+    unload_binary_sensor = await hass.config_entries.async_forward_entry_unload(config_entry, "binary_sensor")
+    unload_ok = unload_camera and unload_binary_sensor
 
     if unload_ok:
         hass.data[DOMAIN].pop(config_entry.entry_id)

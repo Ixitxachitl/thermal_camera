@@ -43,6 +43,35 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     # Reuse or create a persistent session for this platform
     session = hass.data.get("thermal_camera_session")
+    if session and session.closed:
+        session = None
+    if session is None:
+        session = aiohttp.ClientSession()
+        hass.data["thermal_camera_session"] = session
+
+    # Generate a unique ID if it does not already exist
+    unique_id = config_entry.data.get("unique_id")
+    if unique_id is None:
+        unique_id = str(uuid.uuid4())
+        hass.config_entries.async_update_entry(config_entry, data={**config_entry.data, "unique_id": unique_id})
+
+    async_add_entities([ThermalCamera(name, url, rows, cols, path, data_field, low_field, highest_field, resample_method, session, config_entry=config_entry, unique_id=unique_id)], True)
+    """Set up the thermal camera platform from a config entry."""
+    config = config_entry.data
+    name = config.get("name", DEFAULT_NAME)
+    url = config.get("url")
+    rows = config.get("rows", DEFAULT_ROWS)
+    cols = config.get("columns", DEFAULT_COLS)
+    path = config.get("path", DEFAULT_PATH)
+    data_field = config.get("data_field", DEFAULT_DATA_FIELD)
+    low_field = config.get("low_field", DEFAULT_LOW_FIELD)
+    highest_field = config.get("high_field", DEFAULT_HIGHEST_FIELD)
+    resample_method = RESAMPLE_METHODS[config.get("resample", DEFAULT_RESAMPLE_METHOD)]
+
+    # Reuse or create a persistent session for this platform
+    session = hass.data.get("thermal_camera_session")
+    if session and session.closed:
+        session = None
     if session is None:
         session = aiohttp.ClientSession()
         hass.data["thermal_camera_session"] = session
@@ -51,7 +80,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
 class ThermalCamera(Camera):
     """Representation of a thermal camera."""
-    def __init__(self, name, url, rows, cols, path, data_field, low_field, highest_field, resample_method, session, config_entry=None):
+    def __init__(self, name, url, rows, cols, path, data_field, low_field, highest_field, resample_method, session, config_entry=None, unique_id=None):
         super().__init__()
         self._config_entry = config_entry
         self._name = name
@@ -64,7 +93,7 @@ class ThermalCamera(Camera):
         self._highest_field = highest_field
         self._resample_method = resample_method
         self._session = session
-        self._unique_id = str(uuid.uuid4())
+        self._unique_id = unique_id
         self._frame = None
         self._app = web.Application()
         self._app.router.add_get('/mjpeg', self.handle_mjpeg)
@@ -326,5 +355,7 @@ class ThermalCamera(Camera):
 
     async def async_will_remove_from_hass(self):
         """Called when the entity is about to be removed from Home Assistant."""
-        if self._session is not None:
+        if self._runner is not None:
+            await self._runner.cleanup()
+        if self._session is not None and not self._session.closed:
             await self._session.close()

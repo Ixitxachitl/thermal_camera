@@ -1,4 +1,5 @@
 import voluptuous as vol
+import uuid
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -35,6 +36,11 @@ class ThermalCameraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 session = async_get_clientsession(self.hass)
                 async with session.get(user_input["url"]) as response:
                     response.raise_for_status()
+                # Generate and store unique IDs for camera and binary sensor
+                if "unique_id" not in user_input:
+                    user_input["unique_id"] = str(uuid.uuid4())
+                if "unique_id_motion_sensor" not in user_input:
+                    user_input["unique_id_motion_sensor"] = str(uuid.uuid4())
                 return self.async_create_entry(title=user_input["name"], data=user_input)
             except Exception:
                 errors["base"] = "cannot_connect"
@@ -55,6 +61,8 @@ class ThermalCameraOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         """Manage the options for the thermal camera."""
         if user_input is not None:
+            # Update the config entry with new user input values
+            self.hass.config_entries.async_update_entry(self.config_entry, data={**self.config_entry.data, **user_input})
             return self.async_create_entry(title="", data=user_input)
 
         options_schema = vol.Schema({

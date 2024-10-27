@@ -23,6 +23,28 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     # Reuse or create a persistent session for this platform
     session = hass.data.get("thermal_camera_session")
+    if session is None or session.closed:
+        session = aiohttp.ClientSession()
+        hass.data["thermal_camera_session"] = session
+
+    # Generate a unique ID if it does not already exist
+    unique_id = config_entry.data.get("unique_id_motion_sensor")
+    if unique_id is None:
+        unique_id = str(uuid.uuid4())
+        hass.config_entries.async_update_entry(config_entry, data={**config_entry.data, "unique_id_motion_sensor": unique_id})
+
+    async_add_entities([ThermalMotionSensor(name, url, path, motion_threshold, average_field, highest_field, session, config_entry=config_entry, unique_id=unique_id)])
+    """Set up the thermal motion sensor from a config entry."""
+    config = config_entry.data
+    name = config.get(CONF_NAME, DEFAULT_NAME)
+    url = config.get(CONF_URL)
+    path = config.get(CONF_PATH, DEFAULT_PATH)
+    motion_threshold = config.get(CONF_MOTION_THRESHOLD, DEFAULT_MOTION_THRESHOLD)
+    average_field = config.get(CONF_AVERAGE_FIELD, DEFAULT_AVERAGE_FIELD)
+    highest_field = config.get(CONF_HIGHEST_FIELD, DEFAULT_HIGHEST_FIELD)  # Use the shared field name
+
+    # Reuse or create a persistent session for this platform
+    session = hass.data.get("thermal_camera_session")
     if session is None:
         session = aiohttp.ClientSession()
         hass.data["thermal_camera_session"] = session
@@ -31,7 +53,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
 class ThermalMotionSensor(BinarySensorEntity):
     """Representation of a thermal motion detection sensor."""
-    def __init__(self, name, url, path, motion_threshold, average_field, highest_field, session, config_entry=None):
+    def __init__(self, name, url, path, motion_threshold, average_field, highest_field, session, config_entry=None, unique_id=None):
         super().__init__()
         self._config_entry = config_entry
         self._name = name
@@ -41,7 +63,7 @@ class ThermalMotionSensor(BinarySensorEntity):
         self._highest_field = highest_field
         self._is_on = False
         self._session = session
-        self._unique_id = str(uuid.uuid4())
+        self._unique_id = unique_id
 
     @property
     def unique_id(self):
@@ -69,6 +91,11 @@ class ThermalMotionSensor(BinarySensorEntity):
     @property
     def icon(self):
         return "mdi:motion-sensor"
+
+    async def async_will_remove_from_hass(self):
+        """Called when the entity is about to be removed from Home Assistant."""
+        if self._session is not None:
+            await self._session.close()
 
     async def async_update(self):
         """Fetch data and update state."""
