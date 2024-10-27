@@ -17,8 +17,8 @@ CONFIG_SCHEMA = vol.Schema({
     vol.Optional("resample", default=DEFAULT_RESAMPLE_METHOD): vol.In(["NEAREST", "BILINEAR", "BICUBIC", "LANCZOS"]),
 })
 
-class ThermalCameraConfigFlow(config_entries.ConfigFlow):
-    DOMAIN = DOMAIN
+class ThermalCameraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    
     """Handle a config flow for the Thermal Camera integration."""
 
     VERSION = 1
