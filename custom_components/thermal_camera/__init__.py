@@ -17,13 +17,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     hass.data.setdefault(DOMAIN, {})[config_entry.entry_id] = config_entry.data
 
     # Set up the camera and binary sensor entities
-    await hass.config_entries.async_forward_entry_setup(config_entry, "camera")
-    await hass.config_entries.async_forward_entry_setup(config_entry, "binary_sensor")
+    await hass.config_entries.async_forward_entry_setups(config_entry, ["camera"])
+    await hass.config_entries.async_forward_entry_setups(config_entry, ["binary_sensor"])
 
     # Set up the binary sensor entity
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(config_entry, "binary_sensor")
-    )
+    
 
     return True
 
