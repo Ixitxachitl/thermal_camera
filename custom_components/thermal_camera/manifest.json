@@ -1,7 +1,8 @@
 {
   "domain": "thermal_camera",
   "name": "Thermal Camera",
-  "version": "0.1.4",
+  "version": "0.1.5",
+  "config_flow": true,
   "documentation": "https://github.com/Ixitxachitl/thermal_camera",
   "requirements": [
     "requests>=2.31.0",
