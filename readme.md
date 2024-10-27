@@ -1,4 +1,4 @@
-# Thermal Camera Integration for M5Stack T-Lite
+# Thermal Camera Integration
 
 ![alt text](screenshot.png)
 
