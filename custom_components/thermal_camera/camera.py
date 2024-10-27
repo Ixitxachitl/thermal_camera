@@ -320,7 +320,7 @@ class ThermalCamera(Camera):
             s.close()
         return local_ip
 
-    def stream_source(self):
+    async def async_stream_source(self):
         """Return the URL of the video stream."""
         if self.hass and self.entity_id:
             # Generate an access token to be used for streaming
