@@ -3,6 +3,7 @@ import logging
 import os
 import aiohttp
 import async_timeout
+import socket
 from io import BytesIO
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -10,6 +11,8 @@ from homeassistant.components.camera import Camera, PLATFORM_SCHEMA
 from homeassistant.const import CONF_NAME, CONF_URL
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
+from aiohttp import web
+import threading
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -90,11 +93,44 @@ class ThermalCamera(Camera):
         self._resample_method = resample_method
         self._session = session
         self._frame = None
+        self._app = web.Application()
+        self._app.router.add_get('/mjpeg', self.handle_mjpeg)
+        self._runner = web.AppRunner(self._app)
+        self._loop = asyncio.get_event_loop()
+        threading.Thread(target=self.start_server).start()
         try:
             self._font = ImageFont.truetype(FONT_PATH, 40)  # Load DejaVu font
         except IOError:
             _LOGGER.error("Failed to load DejaVu font, using default font.")
             self._font = ImageFont.load_default()
+
+    def start_server(self):
+        self._loop.run_until_complete(self._runner.setup())
+        site = web.TCPSite(self._runner, '0.0.0.0', 8181)
+        self._loop.run_until_complete(site.start())
+
+    async def handle_mjpeg(self, request):
+        response = web.StreamResponse(
+            status=200,
+            reason='OK',
+            headers={
+                'Content-Type': 'multipart/x-mixed-replace; boundary=--frame'
+            }
+        )
+        await response.prepare(request)
+
+        try:
+            while True:
+                await self.fetch_data()
+                if self._frame:
+                    await response.write(
+                        b"--frame\r\n"
+                        b"Content-Type: image/jpeg\r\n\r\n" + self._frame + b"\r\n"
+                    )
+                await asyncio.sleep(0.1)
+        except asyncio.CancelledError:
+            pass
+        return response
 
     @property
     def name(self):
@@ -268,9 +304,22 @@ class ThermalCamera(Camera):
         await asyncio.sleep(0.5)
         return self._frame
 
+    def get_local_ip():
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            # This does not need to be reachable
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+        except Exception:
+            local_ip = "127.0.0.1"
+        finally:
+            s.close()
+        return local_ip
+
     def stream_source(self):
         """Return the URL of the video stream."""
-        return None
+        local_ip = self.get_local_ip()
+        return f'http://{local_ip}:8181/mjpeg'
 
     @property
     def should_poll(self):
