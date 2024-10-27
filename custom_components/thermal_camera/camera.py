@@ -105,8 +105,12 @@ class ThermalCamera(Camera):
             self._font = ImageFont.load_default()
 
     def start_server(self):
-        asyncio.run_coroutine_threadsafe(self._runner.setup(), self._loop)
-        asyncio.run_coroutine_threadsafe(web.TCPSite(self._runner, '0.0.0.0', 8169).start(), self._loop)
+        async def run_server():
+            await self._runner.setup()
+            site = web.TCPSite(self._runner, '0.0.0.0', 8169)
+            await site.start()
+
+        asyncio.run_coroutine_threadsafe(run_server(), self._loop)
 
     async def handle_mjpeg(self, request):
         response = web.StreamResponse(
