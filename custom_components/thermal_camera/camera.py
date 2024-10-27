@@ -106,7 +106,7 @@ class ThermalCamera(Camera):
 
     def start_server(self):
         self._loop.run_until_complete(self._runner.setup())
-        site = web.TCPSite(self._runner, '0.0.0.0', 8181)
+        site = web.TCPSite(self._runner, '0.0.0.0', 8169)
         self._loop.run_until_complete(site.start())
 
     async def handle_mjpeg(self, request):
@@ -304,7 +304,7 @@ class ThermalCamera(Camera):
         await asyncio.sleep(0.5)
         return self._frame
 
-    def get_local_ip():
+    def get_local_ip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
             # This does not need to be reachable
@@ -319,7 +319,7 @@ class ThermalCamera(Camera):
     def stream_source(self):
         """Return the URL of the video stream."""
         local_ip = self.get_local_ip()
-        return f'http://{local_ip}:8181/mjpeg'
+        return f'http://{local_ip}:8169/mjpeg'
 
     @property
     def should_poll(self):
