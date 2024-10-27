@@ -106,8 +106,7 @@ class ThermalCamera(Camera):
 
     def start_server(self):
         asyncio.run_coroutine_threadsafe(self._runner.setup(), self._loop)
-        site = web.TCPSite(self._runner, '0.0.0.0', 8169)
-        asyncio.run_coroutine_threadsafe(site.start(), self._loop)
+        asyncio.run_coroutine_threadsafe(web.TCPSite(self._runner, '0.0.0.0', 8169).start(), self._loop)
 
     async def handle_mjpeg(self, request):
         response = web.StreamResponse(
