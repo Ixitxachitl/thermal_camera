@@ -11,6 +11,7 @@ A custom Home Assistant integration that visualizes thermal data from the M5Stac
 - Designed specifically for the M5Stack T-Lite but can be adapted to other devices.
 - Configurable thermal image dimensions, URL path, and JSON field names.
 - Supports configurable image resampling methods for resizing (NEAREST, BILINEAR, BICUBIC, LANCZOS).
+- Provides an MJPEG stream for easy integration with Home Assistant camera cards.
 
 ## Installation
 
@@ -108,6 +109,10 @@ The integration expects to fetch thermal data from the URL provided in the confi
 ## Motion Detection
 
 The motion detection sensor calculates the difference between the "highest" and "average" temperatures in the frame. If the difference exceeds a certain threshold (default: 8), it indicates motion. You can adjust this threshold in the configuration.
+
+## MJPEG Stream
+
+The thermal camera integration also provides an MJPEG stream accessible at `http://<local-ip>:8169/mjpeg`. This can be added as a camera entity in Home Assistant or viewed directly in a web browser on the same network. The IP address (`<local-ip>`) will be automatically determined by the integration.
 
 ## Development
 
