@@ -3,7 +3,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 import logging
 
-from .const import DOMAIN
+from .constants import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 

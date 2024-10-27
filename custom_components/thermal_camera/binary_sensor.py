@@ -2,22 +2,13 @@ import logging
 import aiohttp
 import async_timeout
 from homeassistant.components.binary_sensor import BinarySensorEntity
-from homeassistant.const import CONF_NAME, CONF_URL
+from .constants import DOMAIN, DEFAULT_NAME, DEFAULT_MOTION_THRESHOLD, DEFAULT_PATH, DEFAULT_AVERAGE_FIELD, DEFAULT_HIGH_FIELD, CONF_PATH, CONF_MOTION_THRESHOLD, CONF_AVERAGE_FIELD, CONF_HIGHEST_FIELD
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 
 _LOGGER = logging.getLogger(__name__)
 
-DEFAULT_NAME = "Thermal Motion Sensor"
-DEFAULT_MOTION_THRESHOLD = 8
-DEFAULT_PATH = "json"
-DEFAULT_AVERAGE_FIELD = "average"
-DEFAULT_HIGHEST_FIELD = "highest"
 
-CONF_PATH = "path"
-CONF_MOTION_THRESHOLD = "motion_threshold"
-CONF_AVERAGE_FIELD = "average_field"
-CONF_HIGHEST_FIELD = "high_field"
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the thermal motion sensor from a config entry."""
@@ -27,7 +18,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     path = config.get(CONF_PATH, DEFAULT_PATH)
     motion_threshold = config.get(CONF_MOTION_THRESHOLD, DEFAULT_MOTION_THRESHOLD)
     average_field = config.get(CONF_AVERAGE_FIELD, DEFAULT_AVERAGE_FIELD)
-    highest_field = config.get("high_field", DEFAULT_HIGHEST_FIELD)  # Use the shared field name
+    highest_field = config.get(CONF_HIGHEST_FIELD, DEFAULT_HIGH_FIELD)  # Use the shared field name
 
     # Reuse or create a persistent session for this platform
     session = hass.data.get("thermal_camera_session")

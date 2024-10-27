@@ -2,7 +2,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from .const import DOMAIN, DEFAULT_NAME, DEFAULT_ROWS, DEFAULT_COLS, DEFAULT_PATH, DEFAULT_DATA_FIELD, DEFAULT_LOW_FIELD, DEFAULT_HIGH_FIELD, DEFAULT_RESAMPLE_METHOD
+from .constants import DOMAIN, DEFAULT_NAME, DEFAULT_ROWS, DEFAULT_COLS, DEFAULT_PATH, DEFAULT_DATA_FIELD, DEFAULT_LOW_FIELD, DEFAULT_HIGH_FIELD, DEFAULT_RESAMPLE_METHOD
 
 # Configuration schema for the UI
 CONFIG_SCHEMA = vol.Schema({
@@ -17,7 +17,7 @@ CONFIG_SCHEMA = vol.Schema({
     vol.Optional("resample", default=DEFAULT_RESAMPLE_METHOD): vol.In(["NEAREST", "BILINEAR", "BICUBIC", "LANCZOS"]),
 })
 
-class ThermalCameraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class ThermalCameraConfigFlow(config_entries.ConfigFlow):
     """Handle a config flow for the Thermal Camera integration."""
 
     VERSION = 1

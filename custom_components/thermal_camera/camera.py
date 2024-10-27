@@ -8,7 +8,7 @@ from io import BytesIO
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from homeassistant.components.camera import Camera, PLATFORM_SCHEMA
-from homeassistant.const import CONF_NAME, CONF_URL
+from .constants import DOMAIN, DEFAULT_NAME, DEFAULT_ROWS, DEFAULT_COLS, DEFAULT_PATH, DEFAULT_DATA_FIELD, DEFAULT_LOW_FIELD, DEFAULT_HIGH_FIELD, DEFAULT_RESAMPLE_METHOD, CONF_ROWS, CONF_COLUMNS, CONF_PATH, CONF_DATA_FIELD, CONF_LOW_FIELD, CONF_HIGH_FIELD, CONF_RESAMPLE, RESAMPLE_METHODS
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.network import get_url
@@ -17,23 +17,8 @@ import threading
 
 _LOGGER = logging.getLogger(__name__)
 
-DEFAULT_NAME = "Thermal Camera"
-DEFAULT_ROWS, DEFAULT_COLS = 24, 32
-DEFAULT_PATH = "json"
-DEFAULT_DATA_FIELD = "frame"
-DEFAULT_LOW_FIELD = "lowest"
-DEFAULT_HIGH_FIELD = "highest"
-DEFAULT_RESAMPLE_METHOD = "NEAREST"
 FONT_PATH = os.path.join(os.path.dirname(__file__), 'DejaVuSans-Bold.ttf')
 
-CONF_DIMENSIONS = "dimensions"
-CONF_ROWS = "rows"
-CONF_COLUMNS = "columns"
-CONF_PATH = "path"
-CONF_DATA_FIELD = "data_field"
-CONF_LOW_FIELD = "low_field"
-CONF_HIGH_FIELD = "high_field"
-CONF_RESAMPLE = "resample"
 
 RESAMPLE_METHODS = {
     "NEAREST": Image.NEAREST,
