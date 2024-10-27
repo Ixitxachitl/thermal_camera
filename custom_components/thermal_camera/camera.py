@@ -9,7 +9,7 @@ from io import BytesIO
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from homeassistant.components.camera import Camera, PLATFORM_SCHEMA
-from .constants import DOMAIN, DEFAULT_NAME, DEFAULT_ROWS, DEFAULT_COLS, DEFAULT_PATH, DEFAULT_DATA_FIELD, DEFAULT_LOWEST_FIELD, DEFAULT_HIGHEST_FIELD, DEFAULT_RESAMPLE_METHOD, CONF_ROWS, CONF_COLUMNS, CONF_PATH, CONF_DATA_FIELD, CONF_LOWEST_FIELD, CONF_HIGHEST_FIELD, CONF_RESAMPLE, RESAMPLE_METHODS
+from .constants import DOMAIN, DEFAULT_NAME, DEFAULT_ROWS, DEFAULT_COLS, DEFAULT_PATH, DEFAULT_DATA_FIELD, DEFAULT_LOWEST_FIELD, DEFAULT_HIGHEST_FIELD, DEFAULT_RESAMPLE_METHOD, DEFAULT_MJPEG_PORT, DEFAULT_DESIRED_HEIGHT, CONF_ROWS, CONF_COLUMNS, CONF_PATH, CONF_DATA_FIELD, CONF_LOWEST_FIELD, CONF_HIGHEST_FIELD, CONF_RESAMPLE, CONF_MJPEG_PORT, CONF_DESIRED_HEIGHT, RESAMPLE_METHODS
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.network import get_url
@@ -40,6 +40,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     lowest_field = config.get("lowest_field", DEFAULT_LOWEST_FIELD)
     highest_field = config.get("high_field", DEFAULT_HIGHEST_FIELD)
     resample_method = RESAMPLE_METHODS[config.get("resample", DEFAULT_RESAMPLE_METHOD)]
+    mjpeg_port = config.get("mjpeg_port", DEFAULT_MJPEG_PORT)
+    desired_height = config.get("desired_height", DEFAULT_DESIRED_HEIGHT)
 
     # Reuse or create a persistent session for this platform
     session = hass.data.get("thermal_camera_session")
@@ -55,11 +57,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         unique_id = str(uuid.uuid4())
         hass.config_entries.async_update_entry(config_entry, data={**config_entry.data, "unique_id": unique_id})
 
-    async_add_entities([ThermalCamera(name, url, rows, cols, path, data_field, lowest_field, highest_field, resample_method, session, config_entry=config_entry, unique_id=unique_id)], True)
+    async_add_entities([ThermalCamera(name, url, rows, cols, path, data_field, lowest_field, highest_field, resample_method, session, mjpeg_port, desired_height, config_entry=config_entry, unique_id=unique_id)], True)
 
 class ThermalCamera(Camera):
     """Representation of a thermal camera."""
-    def __init__(self, name, url, rows, cols, path, data_field, lowest_field, highest_field, resample_method, session, config_entry=None, unique_id=None):
+    def __init__(self, name, url, rows, cols, path, data_field, lowest_field, highest_field, resample_method, session, mjpeg_port, desired_height, config_entry=None, unique_id=None):
         super().__init__()
         self._config_entry = config_entry
         self._name = name
@@ -74,6 +76,8 @@ class ThermalCamera(Camera):
         self._session = session
         self._unique_id = unique_id
         self._frame = None
+        self._mjpeg_port = mjpeg_port
+        self._desired_height = desired_height
         self._app = web.Application()
         self._app.router.add_get('/mjpeg', self.handle_mjpeg)
         self._runner = web.AppRunner(self._app)
@@ -88,7 +92,7 @@ class ThermalCamera(Camera):
     def start_server(self):
         async def run_server():
             await self._runner.setup()
-            site = web.TCPSite(self._runner, '0.0.0.0', 8169)
+            site = web.TCPSite(self._runner, '0.0.0.0', self._mjpeg_port)
             await site.start()
 
         asyncio.run_coroutine_threadsafe(run_server(), self._loop)
@@ -246,14 +250,13 @@ class ThermalCamera(Camera):
             # Draw the text with shadow
             self.draw_text_with_shadow(img, text_x, text_y, text, self._font)
 
-            # Scale the image to 720 pixels in height while maintaining the aspect ratio
-            desired_height = 720
+            # Scale the image to the desired height while maintaining the aspect ratio
             aspect_ratio = img.width / img.height
-            new_width = int(desired_height * aspect_ratio)
+            new_width = int(self._desired_height * aspect_ratio)
 
-            img = img.resize((new_width, desired_height), resample=self._resample_method)
+            img = img.resize((new_width, self._desired_height), resample=self._resample_method)
 
-            _LOGGER.debug("Image resized to 720 pixels in height. New size: %s", img.size)
+            _LOGGER.debug("Image resized to desired height. New size: %s", img.size)
 
             # Convert to JPEG bytes
             self._frame = self.image_to_jpeg_bytes(img)
@@ -334,7 +337,7 @@ class ThermalCamera(Camera):
         
         # Fallback URL if Home Assistant is not available
         local_ip = self.get_local_ip()
-        return f'http://{local_ip}:8169/mjpeg'
+        return f'http://{local_ip}:{self._mjpeg_port}/mjpeg'
 
     @property
     def should_poll(self):

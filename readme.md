@@ -12,6 +12,8 @@ A custom Home Assistant integration that visualizes thermal data from the M5Stac
 - Configurable thermal image dimensions, URL path, and JSON field names.
 - Supports configurable image resampling methods for resizing (NEAREST, BILINEAR, BICUBIC, LANCZOS).
 - Provides an MJPEG stream for easy integration with Home Assistant camera cards.
+- Configurable desired height for thermal image display.
+- Configurable MJPEG stream port for flexible network integration.
 
 ## Installation
 
@@ -43,6 +45,8 @@ This integration is now configurable through the Home Assistant UI.
 - **`average_field`** (Optional): The JSON field name that contains the average temperature value. Defaults to `average`. Use this to match the JSON format of your device.
 - **`resample`** (Optional): The resampling method used for resizing the thermal image. Options are `NEAREST`, `BILINEAR`, `BICUBIC`, and `LANCZOS`. Defaults to `NEAREST`. This allows you to control the quality and performance of the resizing operation.
 - **`motion_threshold`** (Optional): The temperature difference threshold used to detect motion. Defaults to `8`. This determines how sensitive the sensor is to temperature changes.
+- **`mjpeg_port`** (Optional): The port for the MJPEG stream. Defaults to `8169`. Use this to specify a different port if necessary.
+- **`desired_height`** (Optional): The desired height of the thermal image. Defaults to `480`. This allows for customizing the output height of the thermal image.
 
 ## Expected URL and JSON Format
 
@@ -80,7 +84,7 @@ The motion detection sensor calculates the difference between the "highest" and 
 
 ## MJPEG Stream
 
-The thermal camera integration also provides an MJPEG stream accessible at `http://<local-ip>:8169/mjpeg`. This can be added as a camera entity in Home Assistant or viewed directly in a web browser on the same network. The IP address (`<local-ip>`) will be automatically determined by the integration.
+The thermal camera integration provides an MJPEG stream accessible at `http://<local-ip>:<mjpeg_port>/mjpeg`. This can be added as a camera entity in Home Assistant or viewed directly in a web browser on the same network. The IP address (`<local-ip>`) and port (`<mjpeg_port>`) will be automatically determined by the integration based on the configuration.
 
 ### Interfacing with the T-Lite Output Stream
 For interfacing with the output stream of the M5Stack T-Lite in Home Assistant using the MJPEG integration, use the `/stream` endpoint from the device IP. Note that this integration does not use the `/stream` endpoint directly; instead, it uses JSON data to render its own image. 
