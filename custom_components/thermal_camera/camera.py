@@ -49,13 +49,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities([ThermalCamera(name, url, rows, cols, path, data_field, low_field, highest_field, resample_method, session, config_entry=config_entry)], True)
 
 class ThermalCamera(Camera):
-    """Representation of a thermal camera."""
     def __init__(self, name, url, rows, cols, path, data_field, low_field, highest_field, resample_method, session, config_entry=None):
-        super().__init__()
-        self._config_entry = config_entry
-    """Representation of a thermal camera."""
-
-    def __init__(self, name, url, rows, cols, path, data_field, low_field, highest_field, resample_method, session):
         """Initialize the thermal camera."""
         super().__init__()
         self._name = name

@@ -29,13 +29,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities([ThermalMotionSensor(name, url, path, motion_threshold, average_field, highest_field, session, config_entry=config_entry)])
 
 class ThermalMotionSensor(BinarySensorEntity):
-    """Representation of a thermal motion detection sensor."""
     def __init__(self, name, url, path, motion_threshold, average_field, highest_field, session, config_entry=None):
-        super().__init__()
-        self._config_entry = config_entry
-    """Representation of a thermal motion detection sensor."""
-
-    def __init__(self, name, url, path, motion_threshold, average_field, highest_field, session):
         """Initialize the motion sensor."""
         self._name = name
         self._url = f"{url}/{path}"
