@@ -7,8 +7,6 @@ from .constants import DOMAIN, DEFAULT_NAME, DEFAULT_ROWS, DEFAULT_COLS, DEFAULT
 
 # Configuration schema for the UI
 CONFIG_SCHEMA = vol.Schema({
-    # Required URL of the device providing the thermal data.
-    # URL of the device providing the thermal data.
     vol.Required("url", description="The URL of the device providing the thermal data."): str,  # Required URL of the device providing the thermal data.
     vol.Optional("name", default=DEFAULT_NAME, description="The name of the thermal camera."): str,  # Optional name of the thermal camera.
     vol.Optional("rows", default=DEFAULT_ROWS, description="Number of rows in the thermal frame."): int,  # Number of rows in the thermal frame.
