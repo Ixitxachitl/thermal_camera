@@ -8,7 +8,7 @@ DEFAULT_COLS = 32
 DEFAULT_PATH = "json"
 DEFAULT_DATA_FIELD = "frame"
 DEFAULT_LOW_FIELD = "lowest"
-DEFAULT_HIGH_FIELD = "highest"
+DEFAULT_HIGHEST_FIELD = "highest"
 DEFAULT_AVERAGE_FIELD = "average"
 DEFAULT_RESAMPLE_METHOD = "NEAREST"
 DEFAULT_MOTION_THRESHOLD = 8
@@ -19,8 +19,10 @@ CONF_COLUMNS = "columns"
 CONF_PATH = "path"
 CONF_DATA_FIELD = "data_field"
 CONF_LOW_FIELD = "low_field"
-CONF_HIGH_FIELD = "high_field"
+CONF_HIGHEST_FIELD = "highest_field"
+CONF_AVERAGE_FIELD = "average_field"
 CONF_RESAMPLE = "resample"
+CONF_MOTION_THRESHOLD = "motion_threshold"
 
 RESAMPLE_METHODS = {
     "NEAREST": "NEAREST",

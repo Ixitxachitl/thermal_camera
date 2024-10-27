@@ -2,7 +2,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from .constants import DOMAIN, DEFAULT_NAME, DEFAULT_ROWS, DEFAULT_COLS, DEFAULT_PATH, DEFAULT_DATA_FIELD, DEFAULT_LOW_FIELD, DEFAULT_HIGH_FIELD, DEFAULT_RESAMPLE_METHOD, DEFAULT_MOTION_THRESHOLD, DEFAULT_AVERAGE_FIELD
+from .constants import DOMAIN, DEFAULT_NAME, DEFAULT_ROWS, DEFAULT_COLS, DEFAULT_PATH, DEFAULT_DATA_FIELD, DEFAULT_LOW_FIELD, DEFAULT_HIGHEST_FIELD, DEFAULT_RESAMPLE_METHOD, DEFAULT_MOTION_THRESHOLD, DEFAULT_AVERAGE_FIELD
 
 # Configuration schema for the UI
 CONFIG_SCHEMA = vol.Schema({
@@ -13,7 +13,7 @@ CONFIG_SCHEMA = vol.Schema({
     vol.Optional("path", default=DEFAULT_PATH): str,
     vol.Optional("data_field", default=DEFAULT_DATA_FIELD): str,
     vol.Optional("low_field", default=DEFAULT_LOW_FIELD): str,
-    vol.Optional("high_field", default=DEFAULT_HIGH_FIELD): str,
+    vol.Optional("highest_field", default=DEFAULT_HIGHEST_FIELD): str,
     vol.Optional("average_field", default=DEFAULT_AVERAGE_FIELD): str,
     vol.Optional("resample", default=DEFAULT_RESAMPLE_METHOD): vol.In(["NEAREST", "BILINEAR", "BICUBIC", "LANCZOS"]),
     vol.Optional("motion_threshold", default=DEFAULT_MOTION_THRESHOLD): int,
@@ -65,7 +65,7 @@ class ThermalCameraOptionsFlowHandler(config_entries.OptionsFlow):
             vol.Optional("path", default=self.config_entry.data.get("path", DEFAULT_PATH)): str,
             vol.Optional("data_field", default=self.config_entry.data.get("data_field", DEFAULT_DATA_FIELD)): str,
             vol.Optional("low_field", default=self.config_entry.data.get("low_field", DEFAULT_LOW_FIELD)): str,
-            vol.Optional("high_field", default=self.config_entry.data.get("high_field", DEFAULT_HIGH_FIELD)): str,
+            vol.Optional("highest_field", default=self.config_entry.data.get("highest_field", DEFAULT_HIGHEST_FIELD)): str,
             vol.Optional("average_field", default=self.config_entry.data.get("average_field", DEFAULT_AVERAGE_FIELD)): str,
             vol.Optional("resample", default=self.config_entry.data.get("resample", DEFAULT_RESAMPLE_METHOD)): vol.In(["NEAREST", "BILINEAR", "BICUBIC", "LANCZOS"]),
             vol.Optional("motion_threshold", default=self.config_entry.data.get("motion_threshold", DEFAULT_MOTION_THRESHOLD)): int,
