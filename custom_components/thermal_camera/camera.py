@@ -9,7 +9,7 @@ from io import BytesIO
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from homeassistant.components.camera import Camera, PLATFORM_SCHEMA
-from .constants import DOMAIN, DEFAULT_NAME, DEFAULT_ROWS, DEFAULT_COLS, DEFAULT_PATH, DEFAULT_DATA_FIELD, DEFAULT_LOW_FIELD, DEFAULT_HIGHEST_FIELD, DEFAULT_RESAMPLE_METHOD, CONF_ROWS, CONF_COLUMNS, CONF_PATH, CONF_DATA_FIELD, CONF_LOW_FIELD, CONF_HIGHEST_FIELD, CONF_RESAMPLE, RESAMPLE_METHODS
+from .constants import DOMAIN, DEFAULT_NAME, DEFAULT_ROWS, DEFAULT_COLS, DEFAULT_PATH, DEFAULT_DATA_FIELD, DEFAULT_LOWEST_FIELD, DEFAULT_HIGHEST_FIELD, DEFAULT_RESAMPLE_METHOD, CONF_ROWS, CONF_COLUMNS, CONF_PATH, CONF_DATA_FIELD, CONF_LOWEST_FIELD, CONF_HIGHEST_FIELD, CONF_RESAMPLE, RESAMPLE_METHODS
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.network import get_url
@@ -37,7 +37,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     cols = config.get("columns", DEFAULT_COLS)
     path = config.get("path", DEFAULT_PATH)
     data_field = config.get("data_field", DEFAULT_DATA_FIELD)
-    low_field = config.get("low_field", DEFAULT_LOW_FIELD)
+    lowest_field = config.get("lowest_field", DEFAULT_LOWEST_FIELD)
     highest_field = config.get("high_field", DEFAULT_HIGHEST_FIELD)
     resample_method = RESAMPLE_METHODS[config.get("resample", DEFAULT_RESAMPLE_METHOD)]
 
@@ -55,11 +55,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         unique_id = str(uuid.uuid4())
         hass.config_entries.async_update_entry(config_entry, data={**config_entry.data, "unique_id": unique_id})
 
-    async_add_entities([ThermalCamera(name, url, rows, cols, path, data_field, low_field, highest_field, resample_method, session, config_entry=config_entry, unique_id=unique_id)], True)
+    async_add_entities([ThermalCamera(name, url, rows, cols, path, data_field, lowest_field, highest_field, resample_method, session, config_entry=config_entry, unique_id=unique_id)], True)
 
 class ThermalCamera(Camera):
     """Representation of a thermal camera."""
-    def __init__(self, name, url, rows, cols, path, data_field, low_field, highest_field, resample_method, session, config_entry=None, unique_id=None):
+    def __init__(self, name, url, rows, cols, path, data_field, lowest_field, highest_field, resample_method, session, config_entry=None, unique_id=None):
         super().__init__()
         self._config_entry = config_entry
         self._name = name
@@ -68,7 +68,7 @@ class ThermalCamera(Camera):
         self._cols = cols
         self._path = path
         self._data_field = data_field
-        self._low_field = low_field
+        self._lowest_field = lowest_field
         self._highest_field = highest_field
         self._resample_method = resample_method
         self._session = session
@@ -179,7 +179,7 @@ class ThermalCamera(Camera):
                     data = await response.json()
 
             frame_data = np.array(data[self._data_field]).reshape(self._rows, self._cols)
-            min_value = data[self._low_field]
+            min_value = data[self._lowest_field]
             max_value = data[self._highest_field]
 
             _LOGGER.debug("Frame data fetched successfully. Min: %s, Max: %s", min_value, max_value)

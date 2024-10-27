@@ -3,7 +3,7 @@ import uuid
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from .constants import DOMAIN, DEFAULT_NAME, DEFAULT_ROWS, DEFAULT_COLS, DEFAULT_PATH, DEFAULT_DATA_FIELD, DEFAULT_LOW_FIELD, DEFAULT_HIGHEST_FIELD, DEFAULT_RESAMPLE_METHOD, DEFAULT_MOTION_THRESHOLD, DEFAULT_AVERAGE_FIELD
+from .constants import DOMAIN, DEFAULT_NAME, DEFAULT_ROWS, DEFAULT_COLS, DEFAULT_PATH, DEFAULT_DATA_FIELD, DEFAULT_LOWEST_FIELD, DEFAULT_HIGHEST_FIELD, DEFAULT_RESAMPLE_METHOD, DEFAULT_MOTION_THRESHOLD, DEFAULT_AVERAGE_FIELD
 
 # Configuration schema for the UI
 CONFIG_SCHEMA = vol.Schema({
@@ -13,7 +13,7 @@ CONFIG_SCHEMA = vol.Schema({
     vol.Optional("columns", default=DEFAULT_COLS, description="Number of columns in the thermal frame."): int,  # Number of columns in the thermal frame.
     vol.Optional("path", default=DEFAULT_PATH, description="URL path to access the JSON data."): str,  # URL path to access the JSON data.
     vol.Optional("data_field", default=DEFAULT_DATA_FIELD, description="JSON field name containing the thermal frame data."): str,  # JSON field name containing the thermal frame data.
-    vol.Optional("low_field", default=DEFAULT_LOW_FIELD, description="JSON field name containing the lowest temperature value."): str,  # JSON field name containing the lowest temperature value.
+    vol.Optional("lowest_field", default=DEFAULT_LOWEST_FIELD, description="JSON field name containing the lowest temperature value."): str,  # JSON field name containing the lowest temperature value.
     vol.Optional("highest_field", default=DEFAULT_HIGHEST_FIELD, description="JSON field name containing the highest temperature value."): str,  # JSON field name containing the highest temperature value.
     vol.Optional("average_field", default=DEFAULT_AVERAGE_FIELD, description="JSON field name containing the average temperature value."): str,  # JSON field name containing the average temperature value.
     vol.Optional("resample", default=DEFAULT_RESAMPLE_METHOD, description="Resampling method for resizing the thermal image."): vol.In(["NEAREST", "BILINEAR", "BICUBIC", "LANCZOS"]),  # Resampling method for resizing the thermal image.
@@ -56,7 +56,7 @@ class ThermalCameraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 "columns": "Number of columns in the thermal frame.",
                 "path": "URL path to access the JSON data.",
                 "data_field": "JSON field name containing the thermal frame data.",
-                "low_field": "JSON field name containing the lowest temperature value.",
+                "lowest_field": "JSON field name containing the lowest temperature value.",
                 "highest_field": "JSON field name containing the highest temperature value.",
                 "average_field": "JSON field name containing the average temperature value.",
                 "resample": "Resampling method for resizing the thermal image.",
@@ -90,7 +90,7 @@ class ThermalCameraOptionsFlowHandler(config_entries.OptionsFlow):
             vol.Optional("columns", default=self.config_entry.data.get("columns", DEFAULT_COLS)): int,
             vol.Optional("path", default=self.config_entry.data.get("path", DEFAULT_PATH)): str,
             vol.Optional("data_field", default=self.config_entry.data.get("data_field", DEFAULT_DATA_FIELD)): str,
-            vol.Optional("low_field", default=self.config_entry.data.get("low_field", DEFAULT_LOW_FIELD)): str,
+            vol.Optional("lowest_field", default=self.config_entry.data.get("lowest_field", DEFAULT_LOWEST_FIELD)): str,
             vol.Optional("highest_field", default=self.config_entry.data.get("highest_field", DEFAULT_HIGHEST_FIELD)): str,
             vol.Optional("average_field", default=self.config_entry.data.get("average_field", DEFAULT_AVERAGE_FIELD)): str,
             vol.Optional("resample", default=self.config_entry.data.get("resample", DEFAULT_RESAMPLE_METHOD)): vol.In(["NEAREST", "BILINEAR", "BICUBIC", "LANCZOS"]),
@@ -107,7 +107,7 @@ class ThermalCameraOptionsFlowHandler(config_entries.OptionsFlow):
                 "columns": "Number of columns in the thermal frame.",
                 "path": "URL path to access the JSON data.",
                 "data_field": "JSON field name containing the thermal frame data.",
-                "low_field": "JSON field name containing the lowest temperature value.",
+                "lowest_field": "JSON field name containing the lowest temperature value.",
                 "highest_field": "JSON field name containing the highest temperature value.",
                 "average_field": "JSON field name containing the average temperature value.",
                 "resample": "Resampling method for resizing the thermal image.",

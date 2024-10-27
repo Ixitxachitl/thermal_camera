@@ -38,7 +38,7 @@ This integration is now configurable through the Home Assistant UI.
 - **`columns`** (Optional): The number of columns in the thermal frame. Defaults to 32.
 - **`path`** (Optional): The URL path to access the JSON data. Defaults to `json`. Use this to specify a different endpoint if necessary.
 - **`data_field`** (Optional): The JSON field name that contains the thermal frame data. Defaults to `frame`. Use this to match the JSON format of your device.
-- **`low_field`** (Optional): The JSON field name that contains the lowest temperature value. Defaults to `lowest`. Use this to match the JSON format of your device.
+- **`lowest_field`** (Optional): The JSON field name that contains the lowest temperature value. Defaults to `lowest`. Use this to match the JSON format of your device.
 - **`highest_field`** (Optional): The JSON field name that contains the highest temperature value. Defaults to `highest`. Use this to match the JSON format of your device.
 - **`average_field`** (Optional): The JSON field name that contains the average temperature value. Defaults to `average`. Use this to match the JSON format of your device.
 - **`resample`** (Optional): The resampling method used for resizing the thermal image. Options are `NEAREST`, `BILINEAR`, `BICUBIC`, and `LANCZOS`. Defaults to `NEAREST`. This allows you to control the quality and performance of the resizing operation.
@@ -99,7 +99,7 @@ This integration is compatible with devices running firmware based on ESP8266 th
 - **Endpoint URL**: Ensure that the `path` points to the `raw` endpoint of the device, which serves the thermal data in JSON format. The endpoint should provide data at `http://<device-ip>/raw`.
 - **Data Field Configuration**:
   - **`data_field`**: Set to `data` to align with the firmware's JSON response.
-  - **`low_field`**: Set to `min` to access the lowest temperature in the frame.
+  - **`lowest_field`**: Set to `min` to access the lowest temperature in the frame.
   - **`highest_field`**: Set to `max` for the highest temperature value.
   - **`average_field`**: Set to `avg` to obtain the average temperature across the grid.
 - **Resolution Configuration**:
