@@ -82,6 +82,20 @@ The motion detection sensor calculates the difference between the "highest" and 
 
 The thermal camera integration also provides an MJPEG stream accessible at `http://<local-ip>:8169/mjpeg`. This can be added as a camera entity in Home Assistant or viewed directly in a web browser on the same network. The IP address (`<local-ip>`) will be automatically determined by the integration.
 
+### Configuring Devices with ESP8266 Firmware
+This integration is compatible with devices running firmware based on ESP8266 that serves thermal data in JSON format. The firmware code provided above is an example of how to collect thermal data from the AMG8833 thermal sensor and expose it through an HTTP endpoint. To make devices running this firmware work with the integration, the following configuration options are required:
+
+- **Endpoint URL**: Ensure that the URL points to the `/raw` endpoint of the device, which serves the thermal data in JSON format. The endpoint should provide data at `http://<device-ip>/raw`.
+- **Data Field Configuration**:
+  - **`data_field`**: Set to `data` to align with the firmware's JSON response.
+  - **`low_field`**: Set to `min` to access the lowest temperature in the frame.
+  - **`highest_field`**: Set to `max` for the highest temperature value.
+  - **`average_field`**: Set to `avg` to obtain the average temperature across the grid.
+- **Resolution Configuration**:
+  - The firmware uses an 8x8 resolution, so set **`rows`** and **`columns`** to `8` accordingly.
+- **Motion Detection**:
+  - The firmware includes a `person_detected` field, but this data is not used by the integration for motion detection. Instead, motion detection is handled externally by the integration, which uses temperature differences to determine motion.
+
 ## Development
 
 - Adjustments can be made in the integration's settings through the Home Assistant UI.
