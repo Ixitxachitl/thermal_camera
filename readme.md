@@ -46,7 +46,7 @@ This integration is now configurable through the Home Assistant UI.
 - **`resample`** (Optional): The resampling method used for resizing the thermal image. Options are `NEAREST`, `BILINEAR`, `BICUBIC`, and `LANCZOS`. Defaults to `NEAREST`. This allows you to control the quality and performance of the resizing operation.
 - **`motion_threshold`** (Optional): The temperature difference threshold used to detect motion. Defaults to `8`. This determines how sensitive the sensor is to temperature changes.
 - **`mjpeg_port`** (Optional): The port for the MJPEG stream. Defaults to `8169`. Use this to specify a different port if necessary.
-- **`desired_height`** (Optional): The desired height of the thermal image. Defaults to `480`. This allows for customizing the output height of the thermal image.
+- **`desired_height`** (Optional): The desired height of the thermal image. Defaults to `720`. This allows for customizing the output height of the thermal image.
 
 ## Expected URL and JSON Format
 
