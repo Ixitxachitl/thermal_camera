@@ -42,32 +42,18 @@ RESAMPLE_METHODS = {
     "LANCZOS": Image.LANCZOS,
 }
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
-    vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-    vol.Required(CONF_URL): cv.url,
-    vol.Optional(CONF_DIMENSIONS, default={}): vol.Schema({
-        vol.Optional(CONF_ROWS, default=DEFAULT_ROWS): cv.positive_int,
-        vol.Optional(CONF_COLUMNS, default=DEFAULT_COLS): cv.positive_int,
-    }),
-    vol.Optional(CONF_PATH, default=DEFAULT_PATH): cv.string,
-    vol.Optional(CONF_DATA_FIELD, default=DEFAULT_DATA_FIELD): cv.string,
-    vol.Optional(CONF_LOW_FIELD, default=DEFAULT_LOW_FIELD): cv.string,
-    vol.Optional(CONF_HIGH_FIELD, default=DEFAULT_HIGH_FIELD): cv.string,
-    vol.Optional(CONF_RESAMPLE, default=DEFAULT_RESAMPLE_METHOD): vol.In(RESAMPLE_METHODS.keys()),
-})
-
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the thermal camera platform asynchronously."""
-    name = config.get(CONF_NAME)
-    url = config.get(CONF_URL)
-    dimensions = config.get(CONF_DIMENSIONS)
-    rows = dimensions.get(CONF_ROWS, DEFAULT_ROWS)
-    cols = dimensions.get(CONF_COLUMNS, DEFAULT_COLS)
-    path = config.get(CONF_PATH)
-    data_field = config.get(CONF_DATA_FIELD)
-    low_field = config.get(CONF_LOW_FIELD)
-    high_field = config.get(CONF_HIGH_FIELD)
-    resample_method = RESAMPLE_METHODS[config.get(CONF_RESAMPLE)]
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Set up the thermal camera platform from a config entry."""
+    config = config_entry.data
+    name = config.get("name", DEFAULT_NAME)
+    url = config.get("url")
+    rows = config.get("rows", DEFAULT_ROWS)
+    cols = config.get("columns", DEFAULT_COLS)
+    path = config.get("path", DEFAULT_PATH)
+    data_field = config.get("data_field", DEFAULT_DATA_FIELD)
+    low_field = config.get("low_field", DEFAULT_LOW_FIELD)
+    high_field = config.get("high_field", DEFAULT_HIGH_FIELD)
+    resample_method = RESAMPLE_METHODS[config.get("resample", DEFAULT_RESAMPLE_METHOD)]
 
     # Reuse or create a persistent session for this platform
     session = hass.data.get("thermal_camera_session")

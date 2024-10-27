@@ -17,25 +17,17 @@ DEFAULT_HIGHEST_FIELD = "highest"
 CONF_PATH = "path"
 CONF_MOTION_THRESHOLD = "motion_threshold"
 CONF_AVERAGE_FIELD = "average_field"
-CONF_HIGHEST_FIELD = "highest_field"
+CONF_HIGHEST_FIELD = "high_field"
 
-PLATFORM_SCHEMA = cv.PLATFORM_SCHEMA.extend({
-    vol.Required(CONF_URL): cv.url,
-    vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-    vol.Optional(CONF_PATH, default=DEFAULT_PATH): cv.string,
-    vol.Optional(CONF_MOTION_THRESHOLD, default=DEFAULT_MOTION_THRESHOLD): cv.positive_int,
-    vol.Optional(CONF_AVERAGE_FIELD, default=DEFAULT_AVERAGE_FIELD): cv.string,
-    vol.Optional(CONF_HIGHEST_FIELD, default=DEFAULT_HIGHEST_FIELD): cv.string,
-})
-
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the thermal motion sensor asynchronously."""
-    name = config[CONF_NAME]
-    url = config[CONF_URL]
-    path = config[CONF_PATH]
-    motion_threshold = config[CONF_MOTION_THRESHOLD]
-    average_field = config[CONF_AVERAGE_FIELD]
-    highest_field = config[CONF_HIGHEST_FIELD]
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Set up the thermal motion sensor from a config entry."""
+    config = config_entry.data
+    name = config.get(CONF_NAME, DEFAULT_NAME)
+    url = config.get(CONF_URL)
+    path = config.get(CONF_PATH, DEFAULT_PATH)
+    motion_threshold = config.get(CONF_MOTION_THRESHOLD, DEFAULT_MOTION_THRESHOLD)
+    average_field = config.get(CONF_AVERAGE_FIELD, DEFAULT_AVERAGE_FIELD)
+    highest_field = config.get("high_field", DEFAULT_HIGHEST_FIELD)  # Use the shared field name
 
     # Reuse or create a persistent session for this platform
     session = hass.data.get("thermal_camera_session")
