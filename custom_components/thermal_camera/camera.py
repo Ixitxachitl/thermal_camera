@@ -3,7 +3,6 @@ import logging
 import os
 import aiohttp
 import async_timeout
-import socket
 from io import BytesIO
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -106,7 +105,7 @@ class ThermalCamera(Camera):
 
     def start_server(self):
         self._loop.run_until_complete(self._runner.setup())
-        site = web.TCPSite(self._runner, '0.0.0.0', 8169)
+        site = web.TCPSite(self._runner, '0.0.0.0', 8181)
         self._loop.run_until_complete(site.start())
 
     async def handle_mjpeg(self, request):
@@ -304,22 +303,9 @@ class ThermalCamera(Camera):
         await asyncio.sleep(0.5)
         return self._frame
 
-    def get_local_ip(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            # This does not need to be reachable
-            s.connect(("8.8.8.8", 80))
-            local_ip = s.getsockname()[0]
-        except Exception:
-            local_ip = "127.0.0.1"
-        finally:
-            s.close()
-        return local_ip
-
     def stream_source(self):
         """Return the URL of the video stream."""
-        local_ip = self.get_local_ip()
-        return f'http://{local_ip}:8169/mjpeg'
+        return None
 
     @property
     def should_poll(self):
