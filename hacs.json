@@ -1,10 +1,6 @@
 {
   "name": "Thermal Camera Integration",
-  "version": "1.1.0",
-  "description": "Integration for Thermal Camera with UI-based configuration",
-  "domain": "thermal_camera",
-  "documentation": "https://github.com/Ixitxachitl/thermal_camera",
-  "release_notes": "- Added support for config flow to allow UI-based configuration.\n- Improved domain consistency across the integration.\n- Updated configuration options for the thermal camera and binary sensor components.",
   "content_in_root": false,
+  "render_readme": true,
   "homeassistant": "2021.12.0"
 }
