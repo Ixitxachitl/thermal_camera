@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import uuid
 import aiohttp
 import async_timeout
 import socket
@@ -49,9 +50,10 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities([ThermalCamera(name, url, rows, cols, path, data_field, low_field, highest_field, resample_method, session, config_entry=config_entry)], True)
 
 class ThermalCamera(Camera):
+    """Representation of a thermal camera."""
     def __init__(self, name, url, rows, cols, path, data_field, low_field, highest_field, resample_method, session, config_entry=None):
-        """Initialize the thermal camera."""
         super().__init__()
+        self._config_entry = config_entry
         self._name = name
         self._url = url
         self._rows = rows
@@ -62,6 +64,7 @@ class ThermalCamera(Camera):
         self._highest_field = highest_field
         self._resample_method = resample_method
         self._session = session
+        self._unique_id = str(uuid.uuid4())
         self._frame = None
         self._app = web.Application()
         self._app.router.add_get('/mjpeg', self.handle_mjpeg)
@@ -104,6 +107,11 @@ class ThermalCamera(Camera):
         except asyncio.CancelledError:
             pass
         return response
+
+    @property
+    def unique_id(self):
+        """Return a unique ID for the camera."""
+        return self._unique_id
 
     @property
     def device_info(self):

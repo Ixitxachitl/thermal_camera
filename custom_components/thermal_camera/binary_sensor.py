@@ -1,4 +1,5 @@
 import logging
+import uuid
 import aiohttp
 import async_timeout
 from homeassistant.components.binary_sensor import BinarySensorEntity
@@ -29,8 +30,10 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities([ThermalMotionSensor(name, url, path, motion_threshold, average_field, highest_field, session, config_entry=config_entry)])
 
 class ThermalMotionSensor(BinarySensorEntity):
+    """Representation of a thermal motion detection sensor."""
     def __init__(self, name, url, path, motion_threshold, average_field, highest_field, session, config_entry=None):
-        """Initialize the motion sensor."""
+        super().__init__()
+        self._config_entry = config_entry
         self._name = name
         self._url = f"{url}/{path}"
         self._motion_threshold = motion_threshold
@@ -38,6 +41,12 @@ class ThermalMotionSensor(BinarySensorEntity):
         self._highest_field = highest_field
         self._is_on = False
         self._session = session
+        self._unique_id = str(uuid.uuid4())
+
+    @property
+    def unique_id(self):
+        """Return a unique ID for the sensor."""
+        return self._unique_id
 
     @property
     def device_info(self):
