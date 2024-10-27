@@ -1,4 +1,4 @@
-import voluptuous as vol
+{import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -26,10 +26,20 @@ class ThermalCameraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
+        errors = {}
         if user_input is not None:
-            return self.async_create_entry(title=user_input["name"], data=user_input)
+            try:
+                # Validate the URL and create entry if successful
+                session = async_get_clientsession(self.hass)
+                async with session.get(user_input["url"]) as response:
+                    if response.status == 200:
+                        return self.async_create_entry(title=user_input["name"], data=user_input)
+                    else:
+                        errors["base"] = "cannot_connect"
+            except Exception:
+                errors["base"] = "cannot_connect"
 
-        return self.async_show_form(step_id="user", data_schema=CONFIG_SCHEMA)
+        return self.async_show_form(step_id="user", data_schema=CONFIG_SCHEMA, errors=errors)
 
     @staticmethod
     @callback
@@ -48,8 +58,14 @@ class ThermalCameraOptionsFlowHandler(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=user_input)
 
         options_schema = vol.Schema({
+            vol.Optional("url", default=self.config_entry.data.get("url")): str,
+            vol.Optional("name", default=self.config_entry.data.get("name", DEFAULT_NAME)): str,
             vol.Optional("rows", default=self.config_entry.data.get("rows", DEFAULT_ROWS)): int,
             vol.Optional("columns", default=self.config_entry.data.get("columns", DEFAULT_COLS)): int,
+            vol.Optional("path", default=self.config_entry.data.get("path", DEFAULT_PATH)): str,
+            vol.Optional("data_field", default=self.config_entry.data.get("data_field", DEFAULT_DATA_FIELD)): str,
+            vol.Optional("low_field", default=self.config_entry.data.get("low_field", DEFAULT_LOW_FIELD)): str,
+            vol.Optional("high_field", default=self.config_entry.data.get("high_field", DEFAULT_HIGH_FIELD)): str,
             vol.Optional("resample", default=self.config_entry.data.get("resample", DEFAULT_RESAMPLE_METHOD)): vol.In(["NEAREST", "BILINEAR", "BICUBIC", "LANCZOS"]),
         })
 
