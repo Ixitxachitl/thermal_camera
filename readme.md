@@ -17,7 +17,7 @@ A custom Home Assistant integration that visualizes thermal data from the M5Stac
 
 ### HACS Installation
 1. Add this repository as a custom repository in HACS.
-2. Search for "Thermal Camera for M5Stack T-Lite" in HACS and install it.
+2. Search for "Thermal Camera Integration" in HACS and install it.
 3. Restart Home Assistant.
 
 ### Manual Installation
