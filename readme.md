@@ -1,6 +1,6 @@
 # Thermal Camera Integration
 
-![alt text](screenshot.png)
+![alt text](screenshot.png)![alt text](screenshot2.png)
 
 A custom Home Assistant integration that visualizes thermal data from the M5Stack T-Lite device or any compatible device that provides the required JSON data format.
 
