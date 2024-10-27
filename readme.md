@@ -50,7 +50,7 @@ The integration expects to fetch thermal data from the URL provided in the confi
 
 ### Example JSON Format
 
-````json
+```json
 {
   "average": 78.7,
   "highest": 82.8,
@@ -59,7 +59,7 @@ The integration expects to fetch thermal data from the URL provided in the confi
     80.2, 80.4, 83.4, 83.3, ..., 68.6, 67.8  // A 768-element array (32x24)
   ]
 }
-````
+```
 
 ### JSON Fields Description
 
@@ -81,6 +81,17 @@ The motion detection sensor calculates the difference between the "highest" and 
 ## MJPEG Stream
 
 The thermal camera integration also provides an MJPEG stream accessible at `http://<local-ip>:8169/mjpeg`. This can be added as a camera entity in Home Assistant or viewed directly in a web browser on the same network. The IP address (`<local-ip>`) will be automatically determined by the integration.
+
+### Interfacing with the T-Lite Output Stream
+For interfacing with the output stream of the M5Stack T-Lite in Home Assistant using the MJPEG integration, use the `/stream` endpoint from the device IP. Note that this integration does not use the `/stream` endpoint directly; instead, it uses JSON data to render its own image. 
+
+If you would like to add the MJPEG source to go2rtc, an example configuration would look like this:
+
+```
+- ffmpeg:http://<device-ip>/stream#video=h264#hardware#width=1920#height=1080#raw=-sws_flags neighbor
+```
+
+You can modify the options as needed, but this worked for me. Note that integrating the MJPEG source into go2rtc is outside the scope of this project.
 
 ## Configuring Devices with ESP8266 AMG8833 Firmware
 This integration is compatible with devices running firmware based on ESP8266 that serves thermal data in JSON format. To make devices running this firmware work with the integration, the following configuration options are required:
