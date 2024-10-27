@@ -85,7 +85,7 @@ The thermal camera integration also provides an MJPEG stream accessible at `http
 ## Configuring Devices with ESP8266 AMG8833 Firmware
 This integration is compatible with devices running firmware based on ESP8266 that serves thermal data in JSON format. The firmware code provided above is an example of how to collect thermal data from the AMG8833 thermal sensor and expose it through an HTTP endpoint. To make devices running this firmware work with the integration, the following configuration options are required:
 
-- **Endpoint URL**: Ensure that the URL points to the `/raw` endpoint of the device, which serves the thermal data in JSON format. The endpoint should provide data at `http://<device-ip>/raw`.
+- **Endpoint URL**: Ensure that the URL points to the `raw` endpoint of the device, which serves the thermal data in JSON format. The endpoint should provide data at `http://<device-ip>/raw`.
 - **Data Field Configuration**:
   - **`data_field`**: Set to `data` to align with the firmware's JSON response.
   - **`low_field`**: Set to `min` to access the lowest temperature in the frame.
