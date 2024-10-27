@@ -11,6 +11,7 @@ from homeassistant.components.camera import Camera, PLATFORM_SCHEMA
 from homeassistant.const import CONF_NAME, CONF_URL
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.network import get_url
 from aiohttp import web
 import threading
 
@@ -321,6 +322,13 @@ class ThermalCamera(Camera):
 
     def stream_source(self):
         """Return the URL of the video stream."""
+        if self.hass and self.entity_id:
+            # Generate an access token to be used for streaming
+            access_token = self.access_tokens[-1] if self.access_tokens else None
+            if access_token:
+                return f"{get_url(self.hass)}/api/camera_proxy_stream/{self.entity_id}?token={access_token}"
+        
+        # Fallback URL if Home Assistant is not available
         local_ip = self.get_local_ip()
         return f'http://{local_ip}:8169/mjpeg'
 
