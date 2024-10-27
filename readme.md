@@ -1,4 +1,4 @@
-# Thermal Camera Integration
+# <img src="icon.png" alt="icon" width="10%">Thermal Camera Integration
 
 <img src="screenshot.png" alt="screenshot" width="30%"> <img src="screenshot2.png" alt="screenshot2" width="30%">
 
