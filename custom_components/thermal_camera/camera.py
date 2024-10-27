@@ -250,13 +250,14 @@ class ThermalCamera(Camera):
             # Draw the text with shadow
             self.draw_text_with_shadow(img, text_x, text_y, text, self._font)
 
-            # Scale the image to the desired height while maintaining the aspect ratio
-            aspect_ratio = img.width / img.height
-            new_width = int(self._desired_height * aspect_ratio)
+            # Scale the image to the desired height while maintaining the aspect ratio if needed
+            if img.height != self._desired_height:
+                aspect_ratio = img.width / img.height
+                new_width = int(self._desired_height * aspect_ratio)
 
-            img = img.resize((new_width, self._desired_height), resample=self._resample_method)
+                img = img.resize((new_width, self._desired_height), resample=self._resample_method)
 
-            _LOGGER.debug("Image resized to desired height. New size: %s", img.size)
+                _LOGGER.debug("Image resized to desired height. New size: %s", img.size)
 
             # Convert to JPEG bytes
             self._frame = self.image_to_jpeg_bytes(img)
