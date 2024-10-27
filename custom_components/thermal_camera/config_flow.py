@@ -7,17 +7,19 @@ from .constants import DOMAIN, DEFAULT_NAME, DEFAULT_ROWS, DEFAULT_COLS, DEFAULT
 
 # Configuration schema for the UI
 CONFIG_SCHEMA = vol.Schema({
-    vol.Required("url"): str,
-    vol.Optional("name", default=DEFAULT_NAME): str,
-    vol.Optional("rows", default=DEFAULT_ROWS): int,
-    vol.Optional("columns", default=DEFAULT_COLS): int,
-    vol.Optional("path", default=DEFAULT_PATH): str,
-    vol.Optional("data_field", default=DEFAULT_DATA_FIELD): str,
-    vol.Optional("low_field", default=DEFAULT_LOW_FIELD): str,
-    vol.Optional("highest_field", default=DEFAULT_HIGHEST_FIELD): str,
-    vol.Optional("average_field", default=DEFAULT_AVERAGE_FIELD): str,
-    vol.Optional("resample", default=DEFAULT_RESAMPLE_METHOD): vol.In(["NEAREST", "BILINEAR", "BICUBIC", "LANCZOS"]),
-    vol.Optional("motion_threshold", default=DEFAULT_MOTION_THRESHOLD): int,
+    # Required URL of the device providing the thermal data.
+    # URL of the device providing the thermal data.
+    vol.Required("url", description="The URL of the device providing the thermal data."): str,  # Required URL of the device providing the thermal data.
+    vol.Optional("name", default=DEFAULT_NAME, description="The name of the thermal camera."): str,  # Optional name of the thermal camera.
+    vol.Optional("rows", default=DEFAULT_ROWS, description="Number of rows in the thermal frame."): int,  # Number of rows in the thermal frame.
+    vol.Optional("columns", default=DEFAULT_COLS, description="Number of columns in the thermal frame."): int,  # Number of columns in the thermal frame.
+    vol.Optional("path", default=DEFAULT_PATH, description="URL path to access the JSON data."): str,  # URL path to access the JSON data.
+    vol.Optional("data_field", default=DEFAULT_DATA_FIELD, description="JSON field name containing the thermal frame data."): str,  # JSON field name containing the thermal frame data.
+    vol.Optional("low_field", default=DEFAULT_LOW_FIELD, description="JSON field name containing the lowest temperature value."): str,  # JSON field name containing the lowest temperature value.
+    vol.Optional("highest_field", default=DEFAULT_HIGHEST_FIELD, description="JSON field name containing the highest temperature value."): str,  # JSON field name containing the highest temperature value.
+    vol.Optional("average_field", default=DEFAULT_AVERAGE_FIELD, description="JSON field name containing the average temperature value."): str,  # JSON field name containing the average temperature value.
+    vol.Optional("resample", default=DEFAULT_RESAMPLE_METHOD, description="Resampling method for resizing the thermal image."): vol.In(["NEAREST", "BILINEAR", "BICUBIC", "LANCZOS"]),  # Resampling method for resizing the thermal image.
+    vol.Optional("motion_threshold", default=DEFAULT_MOTION_THRESHOLD, description="Temperature difference threshold for motion detection."): int,  # Temperature difference threshold for motion detection.
 })
 
 class ThermalCameraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -63,6 +65,7 @@ class ThermalCameraOptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             # Update the config entry with new user input values
             self.hass.config_entries.async_update_entry(self.config_entry, data={**self.config_entry.data, **user_input})
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
             return self.async_create_entry(title="", data=user_input)
 
         options_schema = vol.Schema({
