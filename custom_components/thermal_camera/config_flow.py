@@ -43,8 +43,10 @@ class ThermalCameraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 async with session.get(user_input["url"]) as response:
                     response.raise_for_status()
                 # Generate and store unique IDs for camera and binary sensor
-                user_input.setdefault("unique_id", str(uuid.uuid4()))
-                user_input.setdefault("unique_id_motion_sensor", str(uuid.uuid4()))
+                if "unique_id" not in user_input:
+                    user_input["unique_id"] = str(uuid.uuid4())
+                if "unique_id_motion_sensor" not in user_input:
+                    user_input["unique_id_motion_sensor"] = str(uuid.uuid4())
                 return self.async_create_entry(title=user_input["name"], data=user_input)
             except Exception:
                 errors["base"] = "cannot_connect"
