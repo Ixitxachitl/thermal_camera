@@ -56,27 +56,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         hass.config_entries.async_update_entry(config_entry, data={**config_entry.data, "unique_id": unique_id})
 
     async_add_entities([ThermalCamera(name, url, rows, cols, path, data_field, low_field, highest_field, resample_method, session, config_entry=config_entry, unique_id=unique_id)], True)
-    """Set up the thermal camera platform from a config entry."""
-    config = config_entry.data
-    name = config.get("name", DEFAULT_NAME)
-    url = config.get("url")
-    rows = config.get("rows", DEFAULT_ROWS)
-    cols = config.get("columns", DEFAULT_COLS)
-    path = config.get("path", DEFAULT_PATH)
-    data_field = config.get("data_field", DEFAULT_DATA_FIELD)
-    low_field = config.get("low_field", DEFAULT_LOW_FIELD)
-    highest_field = config.get("high_field", DEFAULT_HIGHEST_FIELD)
-    resample_method = RESAMPLE_METHODS[config.get("resample", DEFAULT_RESAMPLE_METHOD)]
-
-    # Reuse or create a persistent session for this platform
-    session = hass.data.get("thermal_camera_session")
-    if session and session.closed:
-        session = None
-    if session is None:
-        session = aiohttp.ClientSession()
-        hass.data["thermal_camera_session"] = session
-
-    async_add_entities([ThermalCamera(name, url, rows, cols, path, data_field, low_field, highest_field, resample_method, session, config_entry=config_entry)], True)
 
 class ThermalCamera(Camera):
     """Representation of a thermal camera."""

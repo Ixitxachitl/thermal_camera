@@ -4,6 +4,7 @@ import aiohttp
 import async_timeout
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from .constants import DOMAIN, DEFAULT_NAME, DEFAULT_MOTION_THRESHOLD, DEFAULT_PATH, DEFAULT_AVERAGE_FIELD, DEFAULT_HIGHEST_FIELD, CONF_PATH, CONF_MOTION_THRESHOLD, CONF_AVERAGE_FIELD, CONF_HIGHEST_FIELD
+from homeassistant.const import CONF_NAME, CONF_URL
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 
@@ -34,22 +35,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         hass.config_entries.async_update_entry(config_entry, data={**config_entry.data, "unique_id_motion_sensor": unique_id})
 
     async_add_entities([ThermalMotionSensor(name, url, path, motion_threshold, average_field, highest_field, session, config_entry=config_entry, unique_id=unique_id)])
-    """Set up the thermal motion sensor from a config entry."""
-    config = config_entry.data
-    name = config.get(CONF_NAME, DEFAULT_NAME)
-    url = config.get(CONF_URL)
-    path = config.get(CONF_PATH, DEFAULT_PATH)
-    motion_threshold = config.get(CONF_MOTION_THRESHOLD, DEFAULT_MOTION_THRESHOLD)
-    average_field = config.get(CONF_AVERAGE_FIELD, DEFAULT_AVERAGE_FIELD)
-    highest_field = config.get(CONF_HIGHEST_FIELD, DEFAULT_HIGHEST_FIELD)  # Use the shared field name
-
-    # Reuse or create a persistent session for this platform
-    session = hass.data.get("thermal_camera_session")
-    if session is None:
-        session = aiohttp.ClientSession()
-        hass.data["thermal_camera_session"] = session
-
-    async_add_entities([ThermalMotionSensor(name, url, path, motion_threshold, average_field, highest_field, session, config_entry=config_entry)])
 
 class ThermalMotionSensor(BinarySensorEntity):
     """Representation of a thermal motion detection sensor."""
@@ -94,8 +79,8 @@ class ThermalMotionSensor(BinarySensorEntity):
 
     async def async_will_remove_from_hass(self):
         """Called when the entity is about to be removed from Home Assistant."""
-        if self._session is not None:
-            await self._session.close()
+        # Do not close the shared session here, it's managed by the integration
+        pass
 
     async def async_update(self):
         """Fetch data and update state."""
