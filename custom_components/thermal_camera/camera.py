@@ -72,6 +72,7 @@ class ThermalCamera(Camera):
         self._data_field = data_field
         self._lowest_field = lowest_field
         self._highest_field = highest_field
+        self._average_field = average_field
         self._resample_method = resample_method
         self._session = session
         self._unique_id = unique_id
