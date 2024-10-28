@@ -110,7 +110,6 @@ class ThermalCamera(Camera):
 
         try:
             while True:
-                await self.fetch_data()
                 if self._frame:
                     await response.write(
                         b"--frame\r\n"
@@ -378,3 +377,7 @@ class ThermalCamera(Camera):
         # Stop the MJPEG server properly
         if self._runner is not None:
             await self._runner.cleanup()
+
+        # Ensure all related resources are cleaned up
+        if self._session and not self._session.closed:
+            await self._session.close()
