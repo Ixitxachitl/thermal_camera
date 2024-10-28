@@ -3,10 +3,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 import logging
-import aiohttp
 
 from .constants import DOMAIN
-from .coordinator import ThermalDataCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,22 +17,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     """Set up thermal camera from a config entry."""
     hass.data.setdefault(DOMAIN, {})[config_entry.entry_id] = config_entry.data
 
-    # Reuse or create a persistent session for this platform
-    session = hass.data.get("thermal_camera_session")
-    if session is None or session.closed:
-        session = aiohttp.ClientSession()
-        hass.data["thermal_camera_session"] = session
-
-    url = config_entry.data.get("url")
-    path = config_entry.data.get("path")
-
-    # Create the shared data coordinator
-    coordinator = ThermalDataCoordinator(hass, session, url, path)
-    await coordinator.async_config_entry_first_refresh()
-
-    # Store coordinator in hass data for other entities to use
-    hass.data[DOMAIN][f"{config_entry.entry_id}_coordinator"] = coordinator
-
     # Generate unique IDs for camera and binary sensor if not already present
     unique_id_camera = config_entry.data.get("unique_id")
     unique_id_motion_sensor = config_entry.data.get("unique_id_motion_sensor")
@@ -46,8 +28,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             updated_data["unique_id_motion_sensor"] = str(uuid.uuid4())
         hass.config_entries.async_update_entry(config_entry, data=updated_data)
 
-    # Set up the camera, binary sensor, and temperature sensor entities
-    await hass.config_entries.async_forward_entry_setups(config_entry, ["camera", "binary_sensor", "sensor"])
+    # Set up the camera and binary sensor entities
+    await hass.config_entries.async_forward_entry_setups(config_entry, ["camera"])
+    await hass.config_entries.async_forward_entry_setups(config_entry, ["binary_sensor"])
 
     return True
 
@@ -58,11 +41,10 @@ async def async_reload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    # Unload the camera, binary sensor, and sensor entities
+    # Unload the camera and binary sensor entities
     unload_camera = await hass.config_entries.async_forward_entry_unload(config_entry, "camera")
     unload_binary_sensor = await hass.config_entries.async_forward_entry_unload(config_entry, "binary_sensor")
-    unload_sensor = await hass.config_entries.async_forward_entry_unload(config_entry, "sensor")
-    unload_ok = unload_camera and unload_binary_sensor and unload_sensor
+    unload_ok = unload_camera and unload_binary_sensor
 
     if unload_ok:
         hass.data[DOMAIN].pop(config_entry.entry_id)
