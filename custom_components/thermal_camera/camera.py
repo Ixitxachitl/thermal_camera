@@ -85,7 +85,7 @@ class ThermalCamera(Camera):
         self._loop = asyncio.get_event_loop()
         threading.Thread(target=self.start_server).start()
         try:
-            self._font = ImageFont.truetype(FONT_PATH, 40)  # Load DejaVu font
+            self._font = ImageFont.truetype(FONT_PATH, 30)  # Load DejaVu font
         except IOError:
             _LOGGER.error("Failed to load DejaVu font, using default font.")
             self._font = ImageFont.load_default()
@@ -327,7 +327,7 @@ class ThermalCamera(Camera):
             draw.line([(bar_x, bar_y + i), (bar_x + bar_width, bar_y + i)], fill=color)
 
         # Draw min, max, and average values to the left of the scale bar
-        label_x = bar_x - 105
+        label_x = bar_x - 95
         self.draw_text_with_shadow(img, label_x, bar_y, f"{max_value:.1f}°", font)
         self.draw_text_with_shadow(img, label_x, bar_y + bar_height - 40, f"{min_value:.1f}°", font)
         self.draw_text_with_shadow(img, label_x, (bar_y + bar_height) // 2, f"{avg_value:.1f}°", font)
