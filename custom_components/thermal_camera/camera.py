@@ -88,7 +88,7 @@ class ThermalCamera(Camera):
             self._font = ImageFont.load_default()
 
         self.coordinator = coordinator
-        self.coordinator.async_add_listener(self._update_frame)
+        self.coordinator.async_add_listener(self.async_write_ha_state)
 
     def start_server(self):
         async def run_server():
@@ -160,7 +160,7 @@ class ThermalCamera(Camera):
         else:  # Red to White
             return (255, int(255 * ((normalized - 0.9) / 0.1)), int(255 * ((normalized - 0.9) / 0.1)))
 
-    async def _update_frame(self):
+    async def async_update(self):
         """Update the frame using data from the coordinator."""
         data = self.coordinator.data
         if data is None:
