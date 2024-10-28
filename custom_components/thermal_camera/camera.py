@@ -375,5 +375,6 @@ class ThermalCamera(Camera):
 
     async def async_will_remove_from_hass(self):
         """Called when the entity is about to be removed from Home Assistant."""
-        # Do not close the shared session here, it's managed by the integration
-        pass
+        # Stop the MJPEG server properly
+        if self._runner is not None:
+            await self._runner.cleanup()
