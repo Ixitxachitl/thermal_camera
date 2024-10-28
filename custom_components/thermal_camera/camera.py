@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import random
 import uuid
 import aiohttp
 import async_timeout
@@ -161,15 +162,19 @@ class ThermalCamera(Camera):
         else:  # Red to White
             return (255, int(255 * ((normalized - 0.9) / 0.1)), int(255 * ((normalized - 0.9) / 0.1)))
 
-    async def fetch_data(self):
-        """Fetch data from the URL and process the frame asynchronously."""
+async def fetch_data(self):
+    """Fetch data from the URL and process the frame asynchronously."""
+    max_retries = 3
+    retry_delay = 2  # seconds
+
+    for attempt in range(max_retries):
         try:
-            _LOGGER.debug("Fetching data from URL: %s", self._url)
-            async with async_timeout.timeout(20):
+            _LOGGER.debug("Fetching data from URL: %s (Attempt %d/%d)", self._url, attempt + 1, max_retries)
+            async with async_timeout.timeout(10):
                 async with self._session.get(f"{self._url}/{self._path}") as response:
                     if response.status != 200:
                         _LOGGER.error("Error fetching data, status code: %s", response.status)
-                        return
+                        continue
 
                     data = await response.json()
 
@@ -262,8 +267,14 @@ class ThermalCamera(Camera):
             async with self._frame_lock:
                 self._frame = self.image_to_jpeg_bytes(img)
             _LOGGER.debug("Image converted to JPEG bytes successfully.")
+
+            # Successfully fetched and processed data, break retry loop
+            break
+
         except Exception as e:
-            _LOGGER.error("Error fetching or processing data: %s", e, exc_info=True)
+            _LOGGER.error("Error fetching or processing data (Attempt %d/%d): %s", attempt + 1, max_retries, e, exc_info=True)
+            if attempt < max_retries - 1:
+                await asyncio.sleep(retry_delay + random.uniform(0, 1))  # Add jitter to avoid synchronized retries
 
     def draw_text_with_shadow(self, img, text_x, text_y, text, font):
         """Draw text with both a black border and a semi-transparent shadow."""
