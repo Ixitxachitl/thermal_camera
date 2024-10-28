@@ -223,6 +223,13 @@ class ThermalCamera(Camera):
                 width=1
             )
 
+            # Draw the scale bar with shadow
+            bar_width = 10  # Make the bar half as wide
+            bar_height = img.height - 20
+            bar_x = img.width - bar_width - 10
+            bar_y = 10
+            self.draw_scale_bar_with_shadow(img, bar_x, bar_y, bar_width, bar_height, min_value, max_value, avg_value, self._font)
+
             # Draw the highest temperature text after scaling
             text = f"{frame_data[max_row, max_col]:.1f}°"
             if max_row >= self._rows - 3:
@@ -237,13 +244,6 @@ class ThermalCamera(Camera):
 
             # Draw the text with shadow
             self.draw_text_with_shadow(img, text_x, text_y, text, self._font)
-
-            # Draw the scale bar with shadow
-            bar_width = 10  # Make the bar half as wide
-            bar_height = img.height - 20
-            bar_x = img.width - bar_width - 10
-            bar_y = 10
-            self.draw_scale_bar_with_shadow(img, bar_x, bar_y, bar_width, bar_height, min_value, max_value, avg_value, self._font)
 
             # Scale the image to the desired height while maintaining the aspect ratio if needed
             if img.height != self._desired_height:
@@ -327,7 +327,7 @@ class ThermalCamera(Camera):
             draw.line([(bar_x, bar_y + i), (bar_x + bar_width, bar_y + i)], fill=color)
 
         # Draw min, max, and average values to the left of the scale bar
-        label_x = bar_x - 95
+        label_x = bar_x - 105
         self.draw_text_with_shadow(img, label_x, bar_y, f"{max_value:.1f}°", font)
         self.draw_text_with_shadow(img, label_x, bar_y + bar_height - 40, f"{min_value:.1f}°", font)
         self.draw_text_with_shadow(img, label_x, (bar_y + bar_height) // 2, f"{avg_value:.1f}°", font)
