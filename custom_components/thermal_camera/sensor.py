@@ -1,8 +1,7 @@
-import uuid
 import logging
 from homeassistant.helpers.entity import Entity
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.const import DEVICE_CLASS_TEMPERATURE
+from homeassistant.const import DEVICE_CLASS_TEMPERATURE, UnitOfTemperature
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .constants import DOMAIN, DEFAULT_NAME
 
@@ -15,9 +14,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     unique_id_prefix = config_entry.data.get("unique_id")
 
     sensors = [
-        ThermalTemperatureSensor(coordinator, name, unique_id_prefix, "lowest", "Lowest Temperature"),
-        ThermalTemperatureSensor(coordinator, name, unique_id_prefix, "highest", "Highest Temperature"),
-        ThermalTemperatureSensor(coordinator, name, unique_id_prefix, "average", "Average Temperature")
+        ThermalTemperatureSensor(coordinator, name, unique_id_prefix, "lowest", "Lowest Temperature", config_entry),
+        ThermalTemperatureSensor(coordinator, name, unique_id_prefix, "highest", "Highest Temperature", config_entry),
+        ThermalTemperatureSensor(coordinator, name, unique_id_prefix, "average", "Average Temperature", config_entry)
     ]
 
     async_add_entities(sensors)
@@ -25,15 +24,15 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class ThermalTemperatureSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Thermal Temperature Sensor."""
 
-    def __init__(self, coordinator, name, unique_id_prefix, temp_type, sensor_name):
+    def __init__(self, coordinator, name, unique_id_prefix, temp_type, sensor_name, config_entry):
         """Initialize the temperature sensor."""
         super().__init__(coordinator)
-        self._coordinator = coordinator
+        self._config_entry = config_entry
         self._attr_name = f"{name} {sensor_name}"
         self._attr_unique_id = f"{unique_id_prefix}_{temp_type}_temperature"
         self._temp_type = temp_type
         self._attr_device_class = DEVICE_CLASS_TEMPERATURE
-        self._attr_unit_of_measurement = None  # Don't specify unit (C/F) since input could be either
+        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS  # Assuming Celsius, can modify if needed
 
     @property
     def state(self):
@@ -54,8 +53,8 @@ class ThermalTemperatureSensor(CoordinatorEntity, SensorEntity):
     def device_info(self):
         """Return device information to group sensors together."""
         return {
-            "identifiers": {(DOMAIN, self._coordinator.config_entry.entry_id)},
-            "name": self._coordinator.config_entry.data.get("name", DEFAULT_NAME),
+            "identifiers": {(DOMAIN, self._config_entry.entry_id)},
+            "name": self._config_entry.data.get("name", DEFAULT_NAME),
             "manufacturer": "Your Manufacturer",
             "model": "Thermal Camera",
         }
