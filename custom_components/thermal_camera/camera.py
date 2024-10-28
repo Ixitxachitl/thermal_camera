@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-import random
 import uuid
 import aiohttp
 import async_timeout
@@ -162,19 +161,15 @@ class ThermalCamera(Camera):
         else:  # Red to White
             return (255, int(255 * ((normalized - 0.9) / 0.1)), int(255 * ((normalized - 0.9) / 0.1)))
 
-async def fetch_data(self):
-    """Fetch data from the URL and process the frame asynchronously."""
-    max_retries = 3
-    retry_delay = 2  # seconds
-
-    for attempt in range(max_retries):
+    async def fetch_data(self):
+        """Fetch data from the URL and process the frame asynchronously."""
         try:
-            _LOGGER.debug("Fetching data from URL: %s (Attempt %d/%d)", self._url, attempt + 1, max_retries)
-            async with async_timeout.timeout(10):
+            _LOGGER.debug("Fetching data from URL: %s", self._url)
+            async with async_timeout.timeout(20):
                 async with self._session.get(f"{self._url}/{self._path}") as response:
                     if response.status != 200:
                         _LOGGER.error("Error fetching data, status code: %s", response.status)
-                        continue
+                        return
 
                     data = await response.json()
 
@@ -267,14 +262,8 @@ async def fetch_data(self):
             async with self._frame_lock:
                 self._frame = self.image_to_jpeg_bytes(img)
             _LOGGER.debug("Image converted to JPEG bytes successfully.")
-
-            # Successfully fetched and processed data, break retry loop
-            break
-
         except Exception as e:
-            _LOGGER.error("Error fetching or processing data (Attempt %d/%d): %s", attempt + 1, max_retries, e, exc_info=True)
-            if attempt < max_retries - 1:
-                await asyncio.sleep(retry_delay + random.uniform(0, 1))  # Add jitter to avoid synchronized retries
+            _LOGGER.error("Error fetching or processing data: %s", e, exc_info=True)
 
     def draw_text_with_shadow(self, img, text_x, text_y, text, font):
         """Draw text with both a black border and a semi-transparent shadow."""
@@ -376,26 +365,4 @@ async def fetch_data(self):
     async def async_stream_source(self):
         """Return the URL of the video stream."""
         if self.hass and self.entity_id:
-            # Generate an access token to be used for streaming
-            access_token = self.access_tokens[-1] if self.access_tokens else None
-            if access_token:
-                return f"{get_url(self.hass)}/api/camera_proxy_stream/{self.entity_id}?token={access_token}"
-        
-        # Fallback URL if Home Assistant is not available
-        local_ip = self.get_local_ip()
-        return f'http://{local_ip}:{self._mjpeg_port}/mjpeg'
-      
-    @property
-    def should_poll(self):
-        """Camera polling is required."""
-        return True
-
-    async def async_will_remove_from_hass(self):
-        """Called when the entity is about to be removed from Home Assistant."""
-        # Stop the MJPEG server properly
-        if self._runner is not None:
-            await self._runner.cleanup()
-
-        # Ensure all related resources are cleaned up
-        if self._session and not self._session.closed:
-            await self._session.close()
+            # Generate an

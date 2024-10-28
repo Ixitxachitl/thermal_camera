@@ -1,6 +1,4 @@
-import asyncio
 import logging
-import random
 import uuid
 import aiohttp
 import async_timeout
@@ -86,44 +84,30 @@ class ThermalMotionSensor(BinarySensorEntity):
 
     async def async_update(self):
         """Fetch data and update state."""
-        max_retries = 3
-        retry_delay = 2  # seconds
+        try:
+            _LOGGER.debug("Fetching data from URL: %s", self._url)
+            async with async_timeout.timeout(2):
+                async with self._session.get(self._url) as response:
+                    if response.status != 200:
+                        _LOGGER.error("Error fetching data, status code: %s", response.status)
+                        self._is_on = False
+                        return
 
-        for attempt in range(max_retries):
-            try:
-                _LOGGER.debug("Fetching data from URL: %s (Attempt %d/%d)", self._url, attempt + 1, max_retries)
-                async with async_timeout.timeout(10):
-                    async with self._session.get(self._url) as response:
-                        if response.status != 200:
-                            _LOGGER.error("Error fetching data, status code: %s", response.status)
-                            self._is_on = False
-                            continue
+                    data = await response.json()
 
-                        data = await response.json()
+            avg_temp = data.get(self._average_field)
+            max_temp = data.get(self._highest_field)
 
-                avg_temp = data.get(self._average_field)
-                max_temp = data.get(self._highest_field)
+            if avg_temp is None or max_temp is None:
+                _LOGGER.error("Missing '%s' or '%s' in JSON response", self._average_field, self._highest_field)
+                return
 
-                if avg_temp is None or max_temp is None:
-                    _LOGGER.error("Missing '%s' or '%s' in JSON response", self._average_field, self._highest_field)
-                    self._is_on = False
-                    return
+            temp_diff = max_temp - avg_temp
+            self._is_on = temp_diff > self._motion_threshold
 
-                temp_diff = max_temp - avg_temp
-                self._is_on = temp_diff > self._motion_threshold
-
-                # Successfully fetched and updated state, break retry loop
-                break
-
-            except aiohttp.ClientError as e:
-                _LOGGER.error("Client error when fetching data from %s (Attempt %d/%d): %s", self._url, attempt + 1, max_retries, e)
-                if attempt < max_retries - 1:
-                    await asyncio.sleep(retry_delay + random.uniform(0, 1))  # Add jitter to avoid synchronized retries
-                else:
-                    self._is_on = False
-            except Exception as e:
-                _LOGGER.error("Unexpected error during async_update (Attempt %d/%d): %s", attempt + 1, max_retries, e, exc_info=True)
-                if attempt < max_retries - 1:
-                    await asyncio.sleep(retry_delay + random.uniform(0, 1))
-                else:
-                    self._is_on = False
+        except aiohttp.ClientError as e:
+            _LOGGER.error("Client error when fetching data from %s: %s", self._url, e)
+            self._is_on = False
+        except Exception as e:
+            _LOGGER.error("Unexpected error during async_update: %s", e)
+            self._is_on = False
