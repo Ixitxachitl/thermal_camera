@@ -1,5 +1,10 @@
+import aiohttp
+import async_timeout
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from datetime import timedelta
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 class ThermalDataCoordinator(DataUpdateCoordinator):
     def __init__(self, hass, session, url, path):
