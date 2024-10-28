@@ -110,6 +110,7 @@ class ThermalCamera(Camera):
 
         try:
             while True:
+                await self.fetch_data()
                 if self._frame:
                     await response.write(
                         b"--frame\r\n"
