@@ -167,7 +167,7 @@ class ThermalCamera(Camera):
         """Fetch data from the URL and process the frame asynchronously."""
         try:
             _LOGGER.debug("Fetching data from URL: %s", self._url)
-            async with async_timeout.timeout(20):
+            async with async_timeout.timeout(2):
                 async with self._session.get(f"{self._url}/{self._path}") as response:
                     if response.status != 200:
                         _LOGGER.error("Error fetching data, status code: %s", response.status)
