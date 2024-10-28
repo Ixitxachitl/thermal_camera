@@ -91,6 +91,8 @@ class ThermalCamera(Camera):
             _LOGGER.error("Failed to load DejaVu font, using default font.")
             self._font = ImageFont.load_default()
 
+        self._update_task = self._loop.create_task(self.update_frame_periodically())
+
     def start_server(self):
         async def run_server():
             await self._runner.setup()
@@ -265,6 +267,12 @@ class ThermalCamera(Camera):
         except Exception as e:
             _LOGGER.error("Error fetching or processing data: %s", e, exc_info=True)
 
+    async def update_frame_periodically(self):
+        """Update the frame periodically."""
+        while True:
+            await self.fetch_data()
+            await asyncio.sleep(0.5)
+
     def draw_text_with_shadow(self, img, text_x, text_y, text, font):
         """Draw text with both a black border and a semi-transparent shadow."""
         # Create a separate layer to draw the semi-transparent shadow
@@ -345,10 +353,8 @@ class ThermalCamera(Camera):
 
     async def async_camera_image(self, width=None, height=None):
         """Return the camera image asynchronously."""
-        await self.fetch_data()
         async with self._frame_lock:
-            frame = self._frame
-        return frame
+            return self._frame
 
     def get_local_ip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -365,4 +371,26 @@ class ThermalCamera(Camera):
     async def async_stream_source(self):
         """Return the URL of the video stream."""
         if self.hass and self.entity_id:
-            # Generate an
+            # Generate an access token to be used for streaming
+            access_token = self.access_tokens[-1] if self.access_tokens else None
+            if access_token:
+                return f"{get_url(self.hass)}/api/camera_proxy_stream/{self.entity_id}?token={access_token}"
+        
+        # Fallback URL if Home Assistant is not available
+        local_ip = self.get_local_ip()
+        return f'http://{local_ip}:{self._mjpeg_port}/mjpeg'
+      
+    @property
+    def should_poll(self):
+        """Camera polling is required."""
+        return True
+
+    async def async_will_remove_from_hass(self):
+        """Called when the entity is about to be removed from Home Assistant."""
+        # Stop the MJPEG server properly
+        if self._runner is not None:
+            await self._runner.cleanup()
+
+        # Ensure all related resources are cleaned up
+        if self._session and not self._session.closed:
+            await self._session.close()
