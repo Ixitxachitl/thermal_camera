@@ -77,6 +77,7 @@ class ThermalCamera(Camera):
         self._session = session
         self._unique_id = unique_id
         self._frame = None
+        self._frame_lock = asyncio.Lock()  # Lock to synchronize frame access
         self._mjpeg_port = mjpeg_port
         self._desired_height = desired_height
         self._app = web.Application()
@@ -110,11 +111,14 @@ class ThermalCamera(Camera):
 
         try:
             while True:
-                await self.fetch_data()
-                if self._frame:
+                # Safely read the frame
+                async with self._frame_lock:
+                    frame = self._frame
+
+                if frame:
                     await response.write(
                         b"--frame\r\n"
-                        b"Content-Type: image/jpeg\r\n\r\n" + self._frame + b"\r\n"
+                        b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
                     )
                 await asyncio.sleep(0.1)
         except asyncio.CancelledError:
@@ -255,7 +259,8 @@ class ThermalCamera(Camera):
                 _LOGGER.debug("Image resized to desired height. New size: %s", img.size)
 
             # Convert to JPEG bytes
-            self._frame = self.image_to_jpeg_bytes(img)
+            async with self._frame_lock:
+                self._frame = self.image_to_jpeg_bytes(img)
             _LOGGER.debug("Image converted to JPEG bytes successfully.")
         except Exception as e:
             _LOGGER.error("Error fetching or processing data: %s", e, exc_info=True)
@@ -341,8 +346,9 @@ class ThermalCamera(Camera):
     async def async_camera_image(self, width=None, height=None):
         """Return the camera image asynchronously."""
         await self.fetch_data()
-        await asyncio.sleep(0.5)
-        return self._frame
+        async with self._frame_lock:
+            frame = self._frame
+        return frame
 
     def get_local_ip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
