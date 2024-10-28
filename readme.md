@@ -7,7 +7,6 @@ A custom Home Assistant integration that visualizes thermal data from the M5Stac
 ## Features
 - Maps thermal data to a color gradient (black, blue, green, yellow, orange, red, white) based on temperature.
 - Includes a motion detection binary sensor based on temperature changes.
-- Provides low, high, and average temperature sensors based on the received data.
 - Lightweight implementation using PIL (Pillow), optimized for Raspberry Pi and other low-resource devices.
 - Designed specifically for the M5Stack T-Lite but can be adapted to other devices.
 - Configurable thermal image dimensions, URL path, and JSON field names.
@@ -32,7 +31,7 @@ A custom Home Assistant integration that visualizes thermal data from the M5Stac
 This integration is now configurable through the Home Assistant UI.
 1. Go to **Settings** > **Devices & Services** > **Integrations**.
 2. Click **Add Integration** and search for "Thermal Camera".
-3. Follow the prompts to configure your thermal camera, motion sensor, and temperature sensors.
+3. Follow the prompts to configure your thermal camera and motion sensor.
 
 ### Configuration Options
 - **`url`** (Required): The URL of the device providing the thermal data.
@@ -83,21 +82,12 @@ The integration expects to fetch thermal data from the URL provided in the confi
 
 The motion detection sensor calculates the difference between the "highest" and "average" temperatures in the frame. If the difference exceeds a certain threshold (default: 8), it indicates motion. You can adjust this threshold in the configuration.
 
-## Temperature Sensors
-
-The integration provides three temperature sensors:
-- **Lowest Temperature Sensor**: Tracks the lowest temperature value in the frame.
-- **Highest Temperature Sensor**: Tracks the highest temperature value in the frame.
-- **Average Temperature Sensor**: Tracks the average temperature across the frame.
-
-These sensors can be used in Home Assistant automations or dashboards to monitor temperature trends over time.
-
 ## MJPEG Stream
 
 The thermal camera integration provides an MJPEG stream accessible at `http://<local-ip>:<mjpeg_port>/mjpeg`. This can be added as a camera entity in Home Assistant or viewed directly in a web browser on the same network. The IP address (`<local-ip>`) and port (`<mjpeg_port>`) will be automatically determined by the integration based on the configuration.
 
 ### Interfacing with the T-Lite Output Stream
-For interfacing with the output stream of the M5Stack T-Lite in Home Assistant using the MJPEG integration, use the `/stream` endpoint from the device IP. Note that this integration does not use the `/stream` endpoint directly; instead, it uses JSON data to render its own image.
+For interfacing with the output stream of the M5Stack T-Lite in Home Assistant using the MJPEG integration, use the `/stream` endpoint from the device IP. Note that this integration does not use the `/stream` endpoint directly; instead, it uses JSON data to render its own image. 
 
 If you would like to add the MJPEG source to go2rtc, an example configuration would look like this:
 
