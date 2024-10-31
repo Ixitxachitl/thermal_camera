@@ -42,14 +42,12 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class ThermalMotionSensor(BinarySensorEntity):
     """Representation of a thermal motion detection sensor using the DataUpdateCoordinator."""
 
-    def __init__(self, name, coordinator, motion_threshold, average_field, highest_field, config_entry=None, unique_id=None):
+    def __init__(self, name, coordinator, motion_threshold, config_entry=None, unique_id=None):
         super().__init__()
         self._config_entry = config_entry
         self._name = name
         self.coordinator = coordinator  # Use the shared data coordinator
         self._motion_threshold = motion_threshold
-        self._average_field = average_field
-        self._highest_field = highest_field
         self._is_on = False
         self._unique_id = unique_id
 
@@ -88,14 +86,14 @@ class ThermalMotionSensor(BinarySensorEntity):
         """Update the state based on coordinator data."""
         data = self.coordinator.data
 
-        # Skip if no data from the coordinator, and log as info
+        # Ensure coordinator data is available
         if data is None:
-            _LOGGER.info(f"{self.name}: No data available from coordinator.")
+            _LOGGER.warning(f"{self.name}: No data available from coordinator.")
             return
 
-        # Retrieve and verify required fields from the coordinator data
-        avg_temp = data.get(self._average_field)
-        max_temp = data.get(self._highest_field)
+        # Use the predefined keys from the coordinator directly
+        avg_temp = data.get("avg_value")
+        max_temp = data.get("max_value")
 
         if avg_temp is not None and max_temp is not None:
             temp_diff = max_temp - avg_temp
