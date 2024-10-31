@@ -3,7 +3,6 @@ import logging
 import os
 import uuid
 import aiohttp
-import async_timeout
 import socket
 from io import BytesIO
 import numpy as np
@@ -15,6 +14,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.network import get_url
 from aiohttp import web
 import threading
+from .coordinator import ThermalCameraDataCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,6 +30,8 @@ RESAMPLE_METHODS = {
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the thermal camera platform from a config entry."""
     config = config_entry.data
+
+    # Retrieve configuration values with defaults
     name = config.get("name", DEFAULT_NAME)
     url = config.get("url")
     rows = config.get("rows", DEFAULT_ROWS)
@@ -39,17 +41,23 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     lowest_field = config.get("lowest_field", DEFAULT_LOWEST_FIELD)
     highest_field = config.get("highest_field", DEFAULT_HIGHEST_FIELD)
     average_field = config.get("average_field", DEFAULT_AVERAGE_FIELD)
-    resample_method = RESAMPLE_METHODS[config.get("resample", DEFAULT_RESAMPLE_METHOD)]
+    resample_method = config.get("resample", DEFAULT_RESAMPLE_METHOD)
     mjpeg_port = config.get("mjpeg_port", DEFAULT_MJPEG_PORT)
     desired_height = config.get("desired_height", DEFAULT_DESIRED_HEIGHT)
 
-    # Reuse or create a persistent session for this platform
+    # Initialize or reuse the session
     session = hass.data.get("thermal_camera_session")
-    if session and session.closed:
-        session = None
-    if session is None:
+    if session is None or session.closed:
         session = aiohttp.ClientSession()
         hass.data["thermal_camera_session"] = session
+
+    # Initialize the data coordinator for polling
+    coordinator = ThermalCameraDataCoordinator(
+        hass,
+        session=session,
+        url=url,
+        path=path,
+    )
 
     # Generate a unique ID if it does not already exist
     unique_id = config_entry.data.get("unique_id")
@@ -57,18 +65,36 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         unique_id = str(uuid.uuid4())
         hass.config_entries.async_update_entry(config_entry, data={**config_entry.data, "unique_id": unique_id})
 
-    async_add_entities([ThermalCamera(name, url, rows, cols, path, data_field, lowest_field, highest_field, average_field, resample_method, session, mjpeg_port, desired_height, config_entry=config_entry, unique_id=unique_id)], True)
+    # Add the thermal camera entity, passing all necessary configuration values
+    async_add_entities([
+        ThermalCamera(
+            name=name,
+            coordinator=coordinator,
+            rows=rows,
+            cols=cols,
+            data_field=data_field,
+            lowest_field=lowest_field,
+            highest_field=highest_field,
+            average_field=average_field,
+            resample_method=resample_method,
+            session=session,
+            mjpeg_port=mjpeg_port,
+            desired_height=desired_height,
+            config_entry=config_entry,
+            unique_id=unique_id,
+        )
+    ], update_before_add=True)
 
 class ThermalCamera(Camera):
-    """Representation of a thermal camera."""
-    def __init__(self, name, url, rows, cols, path, data_field, lowest_field, highest_field, average_field, resample_method, session, mjpeg_port, desired_height, config_entry=None, unique_id=None):
+    """Representation of a thermal camera using centralized polling with a DataUpdateCoordinator."""
+
+    def __init__(self, name, coordinator, rows, cols, data_field, lowest_field, highest_field, average_field, resample_method, session, mjpeg_port, desired_height, config_entry=None, unique_id=None):
         super().__init__()
         self._config_entry = config_entry
         self._name = name
-        self._url = url
+        self.coordinator = coordinator  # Use the coordinator for centralized polling
         self._rows = rows
         self._cols = cols
-        self._path = path
         self._data_field = data_field
         self._lowest_field = lowest_field
         self._highest_field = highest_field
@@ -77,23 +103,29 @@ class ThermalCamera(Camera):
         self._session = session
         self._unique_id = unique_id
         self._frame = None
-        self._frame_lock = asyncio.Lock()  # Lock to synchronize frame access
+        self._frame_lock = asyncio.Lock()
         self._mjpeg_port = mjpeg_port
         self._desired_height = desired_height
+
+        # Load font data
+        try:
+            self._font = ImageFont.truetype(FONT_PATH, 30)
+        except IOError:
+            _LOGGER.error("Failed to load DejaVu font, using default font.")
+            self._font = ImageFont.load_default()
+
+        # Set up MJPEG server for streaming
         self._app = web.Application()
         self._app.router.add_get('/mjpeg', self.handle_mjpeg)
         self._runner = web.AppRunner(self._app)
         self._loop = asyncio.get_event_loop()
         threading.Thread(target=self.start_server).start()
-        try:
-            self._font = ImageFont.truetype(FONT_PATH, 30)  # Load DejaVu font
-        except IOError:
-            _LOGGER.error("Failed to load DejaVu font, using default font.")
-            self._font = ImageFont.load_default()
 
-        self._update_task = self._loop.create_task(self.update_frame_periodically())
+        # Listen for updates from the coordinator
+        self.coordinator.async_add_listener(self.async_write_ha_state)
 
     def start_server(self):
+        """Start the MJPEG server for streaming."""
         async def run_server():
             await self._runner.setup()
             site = web.TCPSite(self._runner, '0.0.0.0', self._mjpeg_port)
@@ -126,6 +158,21 @@ class ThermalCamera(Camera):
         except asyncio.CancelledError:
             pass
         return response
+
+    async def async_update(self):
+        """Request a data refresh from the coordinator."""
+        await self.coordinator.async_request_refresh()
+        data = self.coordinator.data
+
+        if data:
+            # Retrieve polled data
+            frame_data = np.array(data["frame_data"]).reshape(self._rows, self._cols)
+            min_value = data["min_value"]
+            max_value = data["max_value"]
+            avg_value = data["avg_value"]
+
+            # Create and process the image using the fetched data
+            self._frame = self.process_frame(frame_data, min_value, max_value, avg_value)
 
     @property
     def unique_id(self):
@@ -163,115 +210,79 @@ class ThermalCamera(Camera):
         else:  # Red to White
             return (255, int(255 * ((normalized - 0.9) / 0.1)), int(255 * ((normalized - 0.9) / 0.1)))
 
-    async def fetch_data(self):
-        """Fetch data from the URL and process the frame asynchronously."""
-        try:
-            _LOGGER.debug("Fetching data from URL: %s", self._url)
-            async with async_timeout.timeout(20):
-                async with self._session.get(f"{self._url}/{self._path}") as response:
-                    if response.status != 200:
-                        _LOGGER.error("Error fetching data, status code: %s", response.status)
-                        return
+    def process_frame(self, frame_data, min_value, max_value, avg_value):
+        """Convert frame data to an image with overlays."""
+        img = Image.new("RGB", (self._cols, self._rows))
+        draw = ImageDraw.Draw(img)
 
-                    data = await response.json()
+        # Map frame data to colors
+        for r in range(self._rows):
+            for c in range(self._cols):
+                color = self.map_to_color(frame_data[r, c], min_value, max_value)
+                draw.point((c, r), fill=color)
 
-            frame_data = np.array(data[self._data_field]).reshape(self._rows, self._cols)
-            min_value = data[self._lowest_field]
-            max_value = data[self._highest_field]
-            avg_value = data[self._average_field]
+        # Scale the image
+        scale_factor = 20
+        img = img.resize((self._cols * scale_factor, self._rows * scale_factor), resample=self._resample_method)
 
-            _LOGGER.debug("Frame data fetched successfully. Min: %s, Max: %s, Avg: %s", min_value, max_value, avg_value)
+        # Draw the overlay elements
+        self.draw_overlay(img, frame_data, min_value, max_value, avg_value, scale_factor)
 
-            # Create an RGB image using PIL
-            img = Image.new("RGB", (self._cols, self._rows))
-            _LOGGER.debug("Initial image created. Image mode: %s, Image size: %s", img.mode, img.size)
-            draw = ImageDraw.Draw(img)
+        # Resize to the desired height if needed
+        if img.height != self._desired_height:
+            aspect_ratio = img.width / img.height
+            img = img.resize((int(self._desired_height * aspect_ratio), self._desired_height), resample=self._resample_method)
 
-            # Map frame data to colors
-            for r in range(self._rows):
-                for c in range(self._cols):
-                    color = self.map_to_color(frame_data[r, c], min_value, max_value)
-                    draw.point((c, r), fill=color)
+        return self.image_to_jpeg_bytes(img)
 
-            # Scale up the image
-            scale_factor = 20
-            img = img.resize((self._cols * scale_factor, self._rows * scale_factor), resample=self._resample_method)
-            _LOGGER.debug("Image resized. New size: %s", img.size)
+    def draw_overlay(self, img, frame_data, min_value, max_value, avg_value, scale_factor):
+        """Draw reticle, scale bar, and temperature text on the image."""
+        draw = ImageDraw.Draw(img)
 
-            # Reinitialize ImageDraw after resizing
-            draw = ImageDraw.Draw(img)
+        # Locate the hottest pixel for the reticle
+        max_index = np.argmax(frame_data)
+        max_row, max_col = divmod(max_index, self._cols)
+        center_x = (max_col + 0.5) * scale_factor
+        center_y = (max_row + 0.5) * scale_factor
+        reticle_radius = 9
 
-            # Draw a reticle on the pixel with the highest temperature
-            max_index = np.argmax(frame_data)
-            max_row, max_col = divmod(max_index, self._cols)
+        # Draw crosshairs and reticle on the hottest pixel
+        draw.line(
+            [(center_x, center_y - reticle_radius), (center_x, center_y + reticle_radius)],
+            fill="red",
+            width=1
+        )
+        draw.line(
+            [(center_x - reticle_radius, center_y), (center_x + reticle_radius, center_y)],
+            fill="red",
+            width=1
+        )
+        draw.ellipse(
+            [(center_x - reticle_radius + 2, center_y - reticle_radius + 2),
+            (center_x + reticle_radius - 2, center_y + reticle_radius - 2)],
+            outline="red",
+            width=1
+        )
 
-            # Scale the coordinates
-            center_x = (max_col + 0.5) * scale_factor
-            center_y = (max_row + 0.5) * scale_factor
-            reticle_radius = 9
+        # Draw the scale bar with shadows
+        bar_width = 10
+        bar_height = img.height - 20
+        bar_x = img.width - bar_width - 10
+        bar_y = 10
+        self.draw_scale_bar_with_shadow(img, bar_x, bar_y, bar_width, bar_height, min_value, max_value, avg_value, self._font)
 
-            # Draw crosshairs and reticle (keeping everything in RGB mode)
-            _LOGGER.debug("Drawing reticle at coordinates: (%s, %s)", center_x, center_y)
-            draw.line(
-                [(center_x, center_y - reticle_radius), (center_x, center_y + reticle_radius)],
-                fill="red",
-                width=1
-            )
-            draw.line(
-                [(center_x - reticle_radius, center_y), (center_x + reticle_radius, center_y)],
-                fill="red",
-                width=1
-            )
-            draw.ellipse(
-                [(center_x - reticle_radius + 2, center_y - reticle_radius + 2),
-                (center_x + reticle_radius - 2, center_y + reticle_radius - 2)],
-                outline="red",
-                width=1
-            )
+        # Draw the highest temperature text
+        text = f"{frame_data[max_row, max_col]:.1f}°"
+        if max_row >= self._rows - 3:
+            # If the reticle is in the bottom three rows, move the text above the reticle
+            text_y = max(center_y - 50, 0)
+        else:
+            # Otherwise, place the text below the reticle
+            text_y = min(center_y + reticle_radius, img.height)
+        text_x = min(max(center_x, 0), img.width - 120)
 
-            # Draw the scale bar with shadow
-            bar_width = 10  # Make the bar half as wide
-            bar_height = img.height - 20
-            bar_x = img.width - bar_width - 10
-            bar_y = 10
-            self.draw_scale_bar_with_shadow(img, bar_x, bar_y, bar_width, bar_height, min_value, max_value, avg_value, self._font)
-
-            # Draw the highest temperature text after scaling
-            text = f"{frame_data[max_row, max_col]:.1f}°"
-            if max_row >= self._rows - 3:
-                # If the reticle is in the bottom three rows, move the text above the reticle
-                text_y = max(center_y - 50, 0)
-            else:
-                # Otherwise, place the text below the reticle
-                text_y = min(center_y + reticle_radius, img.height)
-            text_x = min(max(center_x, 0), img.width - 120)
-
-            _LOGGER.debug(f"Text coordinates: ({text_x}, {text_y}), Text: {text}")
-
-            # Draw the text with shadow
-            self.draw_text_with_shadow(img, text_x, text_y, text, self._font)
-
-            # Scale the image to the desired height while maintaining the aspect ratio if needed
-            if img.height != self._desired_height:
-                aspect_ratio = img.width / img.height
-                new_width = int(self._desired_height * aspect_ratio)
-
-                img = img.resize((new_width, self._desired_height), resample=self._resample_method)
-
-                _LOGGER.debug("Image resized to desired height. New size: %s", img.size)
-
-            # Convert to JPEG bytes
-            async with self._frame_lock:
-                self._frame = self.image_to_jpeg_bytes(img)
-            _LOGGER.debug("Image converted to JPEG bytes successfully.")
-        except Exception as e:
-            _LOGGER.error("Error fetching or processing data: %s", e, exc_info=True)
-
-    async def update_frame_periodically(self):
-        """Update the frame periodically."""
-        while True:
-            await self.fetch_data()
-            await asyncio.sleep(0.5)
+        # Draw the temperature text with shadow
+        self.draw_text_with_shadow(img, text_x, text_y, text, self._font)
 
     def draw_text_with_shadow(self, img, text_x, text_y, text, font):
         """Draw text with both a black border and a semi-transparent shadow."""
