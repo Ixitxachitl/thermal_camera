@@ -59,8 +59,19 @@ class ThermalCameraTemperatureSensor(SensorEntity):
         }
 
     async def async_update(self):
-        """Request a data refresh from the coordinator."""
+        """Request a data refresh from the coordinator and update the state."""
         await self.coordinator.async_request_refresh()
+        data = self.coordinator.data
+
+        # Check if data is available and has the required field
+        if data:
+            temp_value = data.get(self._sensor_type)
+            if temp_value is not None:
+                self._attr_native_value = temp_value
+            else:
+                _LOGGER.error(f"Missing '{self._sensor_type}' data in coordinator response.")
+        else:
+            _LOGGER.error("No data received from coordinator.")
 
     async def async_will_remove_from_hass(self):
         """Cleanup when the sensor is about to be removed."""

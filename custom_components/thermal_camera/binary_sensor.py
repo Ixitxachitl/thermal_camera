@@ -92,16 +92,18 @@ class ThermalMotionSensor(BinarySensorEntity):
         await self.coordinator.async_request_refresh()
         data = self.coordinator.data
 
+        # Check if data is available and contains required fields
         if data:
             avg_temp = data.get(self._average_field)
             max_temp = data.get(self._highest_field)
 
-            if avg_temp is None or max_temp is None:
-                _LOGGER.error("Missing '%s' or '%s' in coordinator data", self._average_field, self._highest_field)
-                return
-
-            temp_diff = max_temp - avg_temp
-            self._is_on = temp_diff > self._motion_threshold
+            if avg_temp is not None and max_temp is not None:
+                temp_diff = max_temp - avg_temp
+                self._is_on = temp_diff > self._motion_threshold
+            else:
+                _LOGGER.error("Missing required temperature data fields from coordinator.")
+        else:
+            _LOGGER.error("No data received from coordinator.")
 
     async def async_will_remove_from_hass(self):
         """Called when the entity is about to be removed from Home Assistant."""

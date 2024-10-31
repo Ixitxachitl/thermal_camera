@@ -160,19 +160,24 @@ class ThermalCamera(Camera):
         return response
 
     async def async_update(self):
-        """Request a data refresh from the coordinator."""
+        """Request a data refresh from the coordinator and update the state."""
         await self.coordinator.async_request_refresh()
         data = self.coordinator.data
 
+        # Ensure data is available before proceeding
         if data:
-            # Retrieve polled data
-            frame_data = np.array(data["frame_data"]).reshape(self._rows, self._cols)
-            min_value = data["min_value"]
-            max_value = data["max_value"]
-            avg_value = data["avg_value"]
+            frame_data = data.get("frame_data")
+            min_value = data.get("min_value")
+            max_value = data.get("max_value")
+            avg_value = data.get("avg_value")
 
-            # Create and process the image using the fetched data
-            self._frame = self.process_frame(frame_data, min_value, max_value, avg_value)
+            if frame_data and min_value is not None and max_value is not None and avg_value is not None:
+                # Process the frame with verified data
+                self._frame = self.process_frame(frame_data, min_value, max_value, avg_value)
+            else:
+                _LOGGER.error("Incomplete data received from coordinator.")
+        else:
+            _LOGGER.error("No data received from coordinator.")
 
     @property
     def unique_id(self):
