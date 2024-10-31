@@ -4,6 +4,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 from .constants import DOMAIN
+from .coordinator import ThermalCameraDataCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -14,7 +15,28 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up the thermal camera integration from a config entry."""
-    hass.data.setdefault(DOMAIN, {})[config_entry.entry_id] = {"config": config_entry.data}
+    # Initialize or reuse the session for the integration
+    session = hass.data.get("thermal_camera_session")
+    if session is None or session.closed:
+        session = aiohttp.ClientSession()
+        hass.data["thermal_camera_session"] = session
+
+    # Initialize the data coordinator for centralized polling
+    coordinator = ThermalCameraDataCoordinator(
+        hass,
+        session=session,
+        url=config_entry.data.get("url"),
+        path=config_entry.data.get("path"),
+    )
+    
+    # Perform the first refresh to ensure initial data is available
+    await coordinator.async_config_entry_first_refresh()
+
+    # Store the coordinator and config data in hass.data
+    hass.data.setdefault(DOMAIN, {})[config_entry.entry_id] = {
+        "coordinator": coordinator,
+        "config": config_entry.data,
+    }
 
     # Generate unique IDs for camera, motion sensor, and temperature sensors if not already present
     updated_data = config_entry.data.copy()

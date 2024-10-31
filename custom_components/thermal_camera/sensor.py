@@ -1,6 +1,6 @@
 import logging
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.const import TEMP_CELSIUS
+from homeassistant.const import UnitOfTemperature
 from .constants import DOMAIN, DEFAULT_NAME
 from .coordinator import ThermalCameraDataCoordinator
 
@@ -34,7 +34,7 @@ class ThermalCameraTemperatureSensor(SensorEntity):
         # Define sensor attributes based on the type
         self._attr_name = f"{config_entry.data.get('name', DEFAULT_NAME)} {sensor_type.capitalize()} Temperature"
         self._attr_unique_id = f"{config_entry.entry_id}_{sensor_type}_temperature"
-        self._attr_unit_of_measurement = TEMP_CELSIUS
+        self._attr_unit_of_measurement = UnitOfTemperature.CELSIUS
         self._attr_device_class = "temperature"  # Optional: assign a device class for better UI display
 
         # Register this sensor to listen for updates from the coordinator
