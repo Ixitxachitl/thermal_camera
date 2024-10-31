@@ -152,30 +152,22 @@ class ThermalCamera(Camera):
         return response
 
     async def async_update(self):
-        """Request a data refresh from the coordinator and update the state."""
+        """Request a data refresh from the coordinator and update the frame."""
         data = self.coordinator.data
 
-        # Skip if no data yet, log as info instead of error
         if data is None:
-            _LOGGER.info("No data available from coordinator yet.")
+            _LOGGER.info("No data available from coordinator.")
             return
 
-        # Retrieve required data fields
-        frame_data = data.get("frame_data")
-        min_value = data.get("min_value")
-        max_value = data.get("max_value")
-        avg_value = data.get("avg_value")
+        # Lock frame update to avoid race conditions
+        async with self._frame_lock:
+            frame_data = np.array(data["frame_data"]).reshape(self._rows, self._cols)
+            min_value = data["min_value"]
+            max_value = data["max_value"]
+            avg_value = data["avg_value"]
 
-        if frame_data and min_value is not None and max_value is not None and avg_value is not None:
-            try:
-                # Ensure frame_data is a NumPy array with the correct shape
-                frame_data = np.array(frame_data).reshape(self._rows, self._cols)
-                # Process the frame with verified data
-                self._frame = self.process_frame(frame_data, min_value, max_value, avg_value)
-            except ValueError as e:
-                _LOGGER.error(f"Error reshaping frame data: {e}")
-        else:
-            _LOGGER.error("Incomplete data received from coordinator.")
+            # Process the frame with verified data
+            self._frame = self.process_frame(frame_data, min_value, max_value, avg_value)
 
     @property
     def unique_id(self):
