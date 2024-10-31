@@ -14,7 +14,7 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name="Thermal Camera Data Coordinator",
-            update_interval=timedelta(seconds=0.1),
+            update_interval=timedelta(seconds=1),
         )
         self.session = session
         self.url = url
