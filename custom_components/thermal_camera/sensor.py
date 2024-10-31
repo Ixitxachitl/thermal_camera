@@ -93,6 +93,7 @@ class ThermalCameraTemperatureSensor(SensorEntity):
             _LOGGER.warning(f"{self.name}: Missing '{self.field}' data in coordinator response.")
 
     async def async_will_remove_from_hass(self):
-        """Cleanup when the sensor is about to be removed."""
-        # Remove the update listener from the coordinator
-        self.coordinator.async_remove_listener(self.async_write_ha_state)
+        """Clean up when the entity is removed from Home Assistant."""
+        # Remove the update listener if registered
+        if hasattr(self, "async_write_ha_state"):
+            self.coordinator.async_remove_listener(self.async_write_ha_state)

@@ -399,8 +399,10 @@ class ThermalCamera(Camera):
         return True
 
     async def async_will_remove_from_hass(self):
-        """Called when the entity is about to be removed from Home Assistant."""
-        self.coordinator.async_remove_listener(self.async_write_ha_state)
+        """Clean up when the entity is removed from Home Assistant."""
+        # Remove the update listener if registered
+        if hasattr(self, "async_write_ha_state"):
+            self.coordinator.async_remove_listener(self.async_write_ha_state)
 
         # Stop the MJPEG server properly
         if self._runner is not None:
