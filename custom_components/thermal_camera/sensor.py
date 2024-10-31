@@ -59,7 +59,7 @@ class ThermalCameraTemperatureSensor(SensorEntity):
         self._attr_device_class = "temperature"  # Optional: assign a device class for better UI display
 
         # Register this sensor to listen for updates from the coordinator
-        self.coordinator.async_add_listener(self.async_write_ha_state)
+        self._remove_listener = self.coordinator.async_add_listener(self.async_write_ha_state)
 
     @property
     def state(self):
@@ -93,9 +93,7 @@ class ThermalCameraTemperatureSensor(SensorEntity):
             _LOGGER.warning(f"{self.name}: Missing '{self.field}' data in coordinator response.")
 
     async def async_will_remove_from_hass(self):
-        """Clean up resources when the sensor entity is removed."""
-        # Remove the listener for state updates
-        if self.coordinator.async_update_listeners:
-            self.coordinator.async_update_listeners.remove(self.async_write_ha_state)
-
-        await super().async_will_remove_from_hass()
+        """Clean up when the sensor is removed from Home Assistant."""
+        if self._remove_listener:
+            self._remove_listener()  # Remove the listener when removing the entity
+            self._remove_listener = None

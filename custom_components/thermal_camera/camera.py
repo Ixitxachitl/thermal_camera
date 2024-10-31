@@ -117,7 +117,7 @@ class ThermalCamera(Camera):
         threading.Thread(target=self.start_server).start()
 
         # Listen for updates from the coordinator
-        self.coordinator.async_add_listener(self.async_write_ha_state)
+        self._remove_listener = self.coordinator.async_add_listener(self.async_write_ha_state)
 
     def start_server(self):
         """Start the MJPEG server for streaming."""
@@ -389,15 +389,17 @@ class ThermalCamera(Camera):
     def should_poll(self):
         """Camera polling is required."""
         return True
-
+    
     async def async_will_remove_from_hass(self):
-        """Clean up resources when the camera entity is removed."""
-        # Remove the listener for state updates
-        if self.coordinator.async_update_listeners:
-            self.coordinator.async_update_listeners.remove(self.async_write_ha_state)
+        """Clean up when the sensor is removed from Home Assistant."""
+        if self._remove_listener:
+            self._remove_listener()  # Remove the listener when removing the entity
+            self._remove_listener = None
 
-        # Stop MJPEG server if it's running
-        if self._runner:
+        # Stop the MJPEG server properly
+        if self._runner is not None:
             await self._runner.cleanup()
 
-        await super().async_will_remove_from_hass()
+        # Ensure all related resources are cleaned up
+        if self._session and not self._session.closed:
+            await self._session.close()
