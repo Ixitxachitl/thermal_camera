@@ -31,6 +31,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the thermal camera platform from a config entry."""
     config = config_entry.data
 
+    # Retrieve the shared coordinator instance from hass.data
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
+
     # Retrieve configuration values with defaults
     name = config.get("name", DEFAULT_NAME)
     url = config.get("url")
@@ -50,14 +53,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     if session is None or session.closed:
         session = aiohttp.ClientSession()
         hass.data["thermal_camera_session"] = session
-
-    # Initialize the data coordinator for polling
-    coordinator = ThermalCameraDataCoordinator(
-        hass,
-        session=session,
-        url=url,
-        path=path,
-    )
 
     # Generate a unique ID if it does not already exist
     unique_id = config_entry.data.get("unique_id")
