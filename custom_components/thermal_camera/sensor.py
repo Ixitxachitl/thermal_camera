@@ -45,6 +45,11 @@ class ThermalCameraTemperatureSensor(SensorEntity):
         self.coordinator = coordinator
         self._config_entry = config_entry
         self._sensor_type = sensor_type  # "highest", "lowest", or "average"
+        self.field = (
+            "max_value" if sensor_type == "highest" else
+            "min_value" if sensor_type == "lowest" else
+            "avg_value"
+        )
         self._unique_id = unique_id  # Store the unique ID
 
         # Define sensor attributes based on the type
@@ -77,23 +82,19 @@ class ThermalCameraTemperatureSensor(SensorEntity):
         }
 
     async def async_update(self):
-        """Request a data refresh from the coordinator and update the state."""
+        """Update the sensor based on coordinator data."""
         data = self.coordinator.data
 
-        # Skip if no data yet, log as info instead of error
         if data is None:
-            _LOGGER.info("No data available from coordinator yet.")
+            _LOGGER.warning(f"{self.name}: Coordinator data is not available.")
             return
-
-        # Check if data is available and has the required field
-        if data:
-            temp_value = data.get(self._sensor_type)
-            if temp_value is not None:
-                self._attr_native_value = temp_value
-            else:
-                _LOGGER.error(f"Missing '{self._sensor_type}' data in coordinator response.")
+        
+        required_field = data.get(self.field)
+        if required_field is None:
+            _LOGGER.warning(f"{self.name}: Missing '{self.field}' data in coordinator response.")
+            self._state = None
         else:
-            _LOGGER.error("No data received from coordinator.")
+            self._state = required_field
 
     async def async_will_remove_from_hass(self):
         """Cleanup when the sensor is about to be removed."""

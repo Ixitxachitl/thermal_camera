@@ -1,31 +1,27 @@
 import logging
 import uuid
 from homeassistant.components.binary_sensor import BinarySensorEntity
-from .constants import DOMAIN, DEFAULT_NAME, DEFAULT_MOTION_THRESHOLD, DEFAULT_PATH, DEFAULT_AVERAGE_FIELD, DEFAULT_HIGHEST_FIELD, CONF_PATH, CONF_MOTION_THRESHOLD, CONF_AVERAGE_FIELD, CONF_HIGHEST_FIELD
-from homeassistant.const import CONF_NAME, CONF_URL
-import voluptuous as vol
-import homeassistant.helpers.config_validation as cv
+from .constants import DOMAIN, DEFAULT_NAME, DEFAULT_MOTION_THRESHOLD, DEFAULT_AVERAGE_FIELD, DEFAULT_HIGHEST_FIELD
+from homeassistant.const import CONF_NAME
 from .coordinator import ThermalCameraDataCoordinator
 
 _LOGGER = logging.getLogger(__name__)
-
-
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the thermal motion sensor from a config entry."""
     config = config_entry.data
     name = config.get(CONF_NAME, DEFAULT_NAME)
-    motion_threshold = config.get(CONF_MOTION_THRESHOLD, DEFAULT_MOTION_THRESHOLD)
-    average_field = config.get(CONF_AVERAGE_FIELD, DEFAULT_AVERAGE_FIELD)
-    highest_field = config.get(CONF_HIGHEST_FIELD, DEFAULT_HIGHEST_FIELD)
+    motion_threshold = config.get("motion_threshold", DEFAULT_MOTION_THRESHOLD)
+    average_field = config.get("average_field", DEFAULT_AVERAGE_FIELD)
+    highest_field = config.get("highest_field", DEFAULT_HIGHEST_FIELD)
 
-    # Retrieve the coordinator from the camera setup or create if necessary
+    # Retrieve the coordinator from the shared integration data
     coordinator = hass.data[DOMAIN].get(config_entry.entry_id).get("coordinator")
     if coordinator is None:
         _LOGGER.error("Data coordinator not found for Thermal Motion Sensor")
         return
 
-    # Generate a unique ID if it does not already exist
+    # Generate a unique ID for the sensor if it doesn’t exist
     unique_id = config_entry.data.get("unique_id_motion_sensor")
     if unique_id is None:
         unique_id = str(uuid.uuid4())
@@ -50,24 +46,24 @@ class ThermalMotionSensor(BinarySensorEntity):
         super().__init__()
         self._config_entry = config_entry
         self._name = name
-        self.coordinator = coordinator  # Use the coordinator for data
+        self.coordinator = coordinator  # Use the shared data coordinator
         self._motion_threshold = motion_threshold
         self._average_field = average_field
         self._highest_field = highest_field
         self._is_on = False
         self._unique_id = unique_id
 
-        # Listen for updates from the coordinator
+        # Register the entity as a listener to the coordinator’s data updates
         self.coordinator.async_add_listener(self.async_write_ha_state)
 
     @property
     def unique_id(self):
-        """Return a unique ID for the sensor."""
+        """Return the unique ID for this sensor."""
         return self._unique_id
 
     @property
     def device_info(self):
-        """Return device information to group camera and binary sensor."""
+        """Return device information to group with the main thermal camera device."""
         return {
             "identifiers": {(DOMAIN, self._config_entry.entry_id)},
             "name": self._config_entry.data.get("name", DEFAULT_NAME),
@@ -88,28 +84,25 @@ class ThermalMotionSensor(BinarySensorEntity):
         return "mdi:motion-sensor"
 
     async def async_update(self):
-        """Request a data refresh from the coordinator and update the state."""
+        """Update the state based on coordinator data."""
         data = self.coordinator.data
 
-        # Skip if no data yet, log as info instead of error
+        # Skip if no data from the coordinator, and log as info
         if data is None:
-            _LOGGER.info("No data available from coordinator yet.")
+            _LOGGER.info(f"{self.name}: No data available from coordinator.")
             return
-        
-        # Check if data is available and contains required fields
-        if data:
-            avg_temp = data.get(self._average_field)
-            max_temp = data.get(self._highest_field)
 
-            if avg_temp is not None and max_temp is not None:
-                temp_diff = max_temp - avg_temp
-                self._is_on = temp_diff > self._motion_threshold
-            else:
-                _LOGGER.error("Missing required temperature data fields from coordinator.")
+        # Retrieve and verify required fields from the coordinator data
+        avg_temp = data.get(self._average_field)
+        max_temp = data.get(self._highest_field)
+
+        if avg_temp is not None and max_temp is not None:
+            temp_diff = max_temp - avg_temp
+            self._is_on = temp_diff > self._motion_threshold
         else:
-            _LOGGER.error("No data received from coordinator.")
+            _LOGGER.error(f"{self.name}: Missing required temperature data fields from coordinator.")
 
     async def async_will_remove_from_hass(self):
-        """Called when the entity is about to be removed from Home Assistant."""
-        # Do not close the shared session or coordinator here, it's managed by the integration
-        pass
+        """Clean up when the sensor is removed from Home Assistant."""
+        # Remove the update listener
+        self.coordinator.async_remove_listener(self.async_write_ha_state)

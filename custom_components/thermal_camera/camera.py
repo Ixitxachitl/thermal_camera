@@ -163,20 +163,17 @@ class ThermalCamera(Camera):
             _LOGGER.info("No data available from coordinator yet.")
             return
 
-        # Ensure data is available before proceeding
-        if data:
-            frame_data = data.get("frame_data")
-            min_value = data.get("min_value")
-            max_value = data.get("max_value")
-            avg_value = data.get("avg_value")
+        # Retrieve required data fields
+        frame_data = data.get("frame_data")
+        min_value = data.get("min_value")
+        max_value = data.get("max_value")
+        avg_value = data.get("avg_value")
 
-            if frame_data and min_value is not None and max_value is not None and avg_value is not None:
-                # Process the frame with verified data
-                self._frame = self.process_frame(frame_data, min_value, max_value, avg_value)
-            else:
-                _LOGGER.error("Incomplete data received from coordinator.")
+        if frame_data and min_value is not None and max_value is not None and avg_value is not None:
+            # Process the frame with verified data
+            self._frame = self.process_frame(frame_data, min_value, max_value, avg_value)
         else:
-            _LOGGER.error("No data received from coordinator.")
+            _LOGGER.error("Incomplete data received from coordinator.")
 
     @property
     def unique_id(self):
@@ -402,6 +399,8 @@ class ThermalCamera(Camera):
 
     async def async_will_remove_from_hass(self):
         """Called when the entity is about to be removed from Home Assistant."""
+        self.coordinator.async_remove_listener(self.async_write_ha_state)
+
         # Stop the MJPEG server properly
         if self._runner is not None:
             await self._runner.cleanup()
