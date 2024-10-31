@@ -40,17 +40,20 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class ThermalCameraTemperatureSensor(SensorEntity):
     """Representation of a thermal camera temperature sensor."""
 
-    def __init__(self, coordinator, config_entry, sensor_type):
+    def __init__(self, coordinator, config_entry, sensor_type, unique_id=None):
         super().__init__()
         self.coordinator = coordinator
         self._config_entry = config_entry
         self._sensor_type = sensor_type  # "highest", "lowest", or "average"
-        
+        self._unique_id = unique_id  # Store the unique ID
+
         # Define sensor attributes based on the type
         self._attr_name = f"{config_entry.data.get('name', DEFAULT_NAME)} {sensor_type.capitalize()} Temperature"
         self._attr_unique_id = f"{config_entry.entry_id}_{sensor_type}_temperature"
         self._attr_unit_of_measurement = UnitOfTemperature.CELSIUS
         self._attr_device_class = "temperature"  # Optional: assign a device class for better UI display
+        if unique_id:
+            self._attr_unique_id = unique_id
 
         # Register this sensor to listen for updates from the coordinator
         self.coordinator.async_add_listener(self.async_write_ha_state)
@@ -75,7 +78,6 @@ class ThermalCameraTemperatureSensor(SensorEntity):
 
     async def async_update(self):
         """Request a data refresh from the coordinator and update the state."""
-        await self.coordinator.async_request_refresh()
         data = self.coordinator.data
 
         # Skip if no data yet, log as info instead of error

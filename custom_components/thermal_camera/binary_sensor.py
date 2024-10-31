@@ -89,7 +89,6 @@ class ThermalMotionSensor(BinarySensorEntity):
 
     async def async_update(self):
         """Request a data refresh from the coordinator and update the state."""
-        await self.coordinator.async_request_refresh()
         data = self.coordinator.data
 
         # Skip if no data yet, log as info instead of error
