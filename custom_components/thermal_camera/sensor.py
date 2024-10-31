@@ -16,10 +16,25 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     # Initialize three sensors: highest, lowest, and average temperature
     async_add_entities([
-        ThermalCameraTemperatureSensor(coordinator, config_entry, "highest"),
-        ThermalCameraTemperatureSensor(coordinator, config_entry, "lowest"),
-        ThermalCameraTemperatureSensor(coordinator, config_entry, "average"),
-    ], update_before_add=True)
+        ThermalCameraTemperatureSensor(
+            coordinator,
+            config_entry,
+            "highest",
+            unique_id=config_entry.data["unique_id_highest_sensor"]
+        ),
+        ThermalCameraTemperatureSensor(
+            coordinator,
+            config_entry,
+            "lowest",
+            unique_id=config_entry.data["unique_id_lowest_sensor"]
+        ),
+        ThermalCameraTemperatureSensor(
+            coordinator,
+            config_entry,
+            "average",
+            unique_id=config_entry.data["unique_id_average_sensor"]
+        ),
+    ])
 
 
 class ThermalCameraTemperatureSensor(SensorEntity):

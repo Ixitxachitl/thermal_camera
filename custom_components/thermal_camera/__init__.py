@@ -33,13 +33,30 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     # Wait for initial data load
     await coordinator.async_config_entry_first_refresh()
 
+    # Generate unique IDs if they are not already present in the config entry data
+    updated_data = config_entry.data.copy()
+    if "unique_id" not in updated_data:
+        updated_data["unique_id"] = str(uuid.uuid4())
+    if "unique_id_motion_sensor" not in updated_data:
+        updated_data["unique_id_motion_sensor"] = str(uuid.uuid4())
+    if "unique_id_highest_sensor" not in updated_data:
+        updated_data["unique_id_highest_sensor"] = str(uuid.uuid4())
+    if "unique_id_lowest_sensor" not in updated_data:
+        updated_data["unique_id_lowest_sensor"] = str(uuid.uuid4())
+    if "unique_id_average_sensor" not in updated_data:
+        updated_data["unique_id_average_sensor"] = str(uuid.uuid4())
+
+    # Update the config entry if unique IDs were added
+    if updated_data != config_entry.data:
+        hass.config_entries.async_update_entry(config_entry, data=updated_data)
+
     # Store coordinator and config
     hass.data.setdefault(DOMAIN, {})[config_entry.entry_id] = {
         "coordinator": coordinator,
-        "config": config_entry.data,
+        "config": updated_data,
     }
 
-    # Set up platforms
+    # Forward setup for camera, binary sensor, and temperature sensors
     await hass.config_entries.async_forward_entry_setups(config_entry, ["camera", "binary_sensor", "sensor"])
 
     return True
