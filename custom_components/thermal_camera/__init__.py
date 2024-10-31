@@ -23,17 +23,22 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         session = aiohttp.ClientSession()
         hass.data["thermal_camera_session"] = session
 
+    # Set up the coordinator with field mappings from the config entry
     coordinator = ThermalCameraDataCoordinator(
         hass,
         session=session,
         url=config_entry.data.get("url"),
         path=config_entry.data.get("path"),
+        data_field=config_entry.data.get("data_field", "frame"),
+        lowest_field=config_entry.data.get("lowest_field", "lowest"),
+        highest_field=config_entry.data.get("highest_field", "highest"),
+        average_field=config_entry.data.get("average_field", "average")
     )
 
     # Wait for initial data load
     await coordinator.async_config_entry_first_refresh()
 
-    # Generate unique IDs if they are not already present in the config entry data
+    # Generate unique IDs for entities if not already in the config entry data
     updated_data = config_entry.data.copy()
     if "unique_id" not in updated_data:
         updated_data["unique_id"] = str(uuid.uuid4())

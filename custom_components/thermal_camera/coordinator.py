@@ -8,7 +8,7 @@ _LOGGER = logging.getLogger(__name__)
 class ThermalCameraDataCoordinator(DataUpdateCoordinator):
     """Class to manage polling data from the thermal camera API."""
 
-    def __init__(self, hass, session, url, path):
+    def __init__(self, hass, session, url, path, data_field, lowest_field, highest_field, average_field):
         """Initialize the coordinator with necessary details."""
         super().__init__(
             hass,
@@ -19,6 +19,10 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
         self.session = session
         self.url = url
         self.path = path
+        self.data_field = data_field
+        self.lowest_field = lowest_field
+        self.highest_field = highest_field
+        self.average_field = average_field
 
     async def _async_update_data(self):
         """Fetch data from the camera API."""
@@ -33,10 +37,10 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
 
             # Return relevant data fields with defaults to prevent missing keys
             return {
-                "frame_data": data.get("frame_data", []),
-                "min_value": data.get("min_value", 0.0),
-                "max_value": data.get("max_value", 0.0),
-                "avg_value": data.get("avg_value", 0.0),
+                "frame_data": data.get(self.data_field, []),
+                "min_value": data.get(self.lowest_field, 0.0),
+                "max_value": data.get(self.highest_field, 0.0),
+                "avg_value": data.get(self.average_field, 0.0),
             }
         except Exception as e:
             raise UpdateFailed(f"Error communicating with API: {e}")
