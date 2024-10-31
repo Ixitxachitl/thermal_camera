@@ -77,6 +77,7 @@ class ThermalMotionSensor(BinarySensorEntity):
 
     @property
     def is_on(self):
+        """Return True if motion is detected based on temperature difference."""
         return self._is_on
 
     @property
@@ -99,6 +100,7 @@ class ThermalMotionSensor(BinarySensorEntity):
         if avg_temp is not None and max_temp is not None:
             temp_diff = max_temp - avg_temp
             self._is_on = temp_diff > self._motion_threshold
+            _LOGGER.debug(f"{self.name}: Motion state updated. Temperature difference: {temp_diff}, Threshold: {self._motion_threshold}")
         else:
             _LOGGER.error(f"{self.name}: Missing required temperature data fields from coordinator.")
 

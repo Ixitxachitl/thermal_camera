@@ -54,11 +54,9 @@ class ThermalCameraTemperatureSensor(SensorEntity):
 
         # Define sensor attributes based on the type
         self._attr_name = f"{config_entry.data.get('name', DEFAULT_NAME)} {sensor_type.capitalize()} Temperature"
-        self._attr_unique_id = f"{config_entry.entry_id}_{sensor_type}_temperature"
+        self._attr_unique_id = f"{config_entry.entry_id}_{sensor_type}_temperature" if not unique_id else unique_id
         self._attr_unit_of_measurement = UnitOfTemperature.CELSIUS
         self._attr_device_class = "temperature"  # Optional: assign a device class for better UI display
-        if unique_id:
-            self._attr_unique_id = unique_id
 
         # Register this sensor to listen for updates from the coordinator
         self.coordinator.async_add_listener(self.async_write_ha_state)
@@ -68,7 +66,7 @@ class ThermalCameraTemperatureSensor(SensorEntity):
         """Return the current temperature value for this sensor type."""
         data = self.coordinator.data
         if data:
-            return data.get(self._sensor_type)
+            return data.get(self.field)
         return None
 
     @property
@@ -89,12 +87,10 @@ class ThermalCameraTemperatureSensor(SensorEntity):
             _LOGGER.warning(f"{self.name}: Coordinator data is not available.")
             return
         
-        required_field = data.get(self.field)
-        if required_field is None:
+        # Update internal state directly from the coordinator data
+        self._attr_native_value = data.get(self.field)
+        if self._attr_native_value is None:
             _LOGGER.warning(f"{self.name}: Missing '{self.field}' data in coordinator response.")
-            self._state = None
-        else:
-            self._state = required_field
 
     async def async_will_remove_from_hass(self):
         """Cleanup when the sensor is about to be removed."""

@@ -287,8 +287,7 @@ class ThermalCamera(Camera):
 
     def draw_text_with_shadow(self, img, text_x, text_y, text, font):
         """Draw text with both a black border and a semi-transparent shadow."""
-        # Create a separate layer to draw the semi-transparent shadow
-        shadow_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))  # Create a fully transparent RGBA layer
+        shadow_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))  # Transparent RGBA layer
         shadow_draw = ImageDraw.Draw(shadow_layer)
 
         # Define shadow properties
@@ -326,7 +325,7 @@ class ThermalCamera(Camera):
 
     def draw_scale_bar_with_shadow(self, img, bar_x, bar_y, bar_width, bar_height, min_value, max_value, avg_value, font):
         """Draw the scale bar with a shadow and gradient."""
-        shadow_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))  # Create a fully transparent RGBA layer
+        shadow_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))  # Transparent RGBA layer
         shadow_draw = ImageDraw.Draw(shadow_layer)
 
         shadow_offset = 5  # Offset for the shadow

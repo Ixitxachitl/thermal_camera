@@ -30,17 +30,39 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
             async with self.session.get(f"{self.url}/{self.path}") as response:
                 if response.status != 200:
                     raise UpdateFailed(f"Failed to fetch data: {response.status}")
+
                 try:
                     data = await response.json()
                 except aiohttp.ContentTypeError:
                     raise UpdateFailed("Response not in JSON format.")
 
-            # Return relevant data fields with defaults to prevent missing keys
+            # Extract relevant data with defaults for missing fields
+            frame_data = data.get(self.data_field)
+            min_value = data.get(self.lowest_field)
+            max_value = data.get(self.highest_field)
+            avg_value = data.get(self.average_field)
+
+            # Log and warn if any expected field is missing
+            missing_fields = [
+                field_name
+                for field_name, field_value in {
+                    self.data_field: frame_data,
+                    self.lowest_field: min_value,
+                    self.highest_field: max_value,
+                    self.average_field: avg_value,
+                }.items()
+                if field_value is None
+            ]
+            if missing_fields:
+                _LOGGER.warning("Missing fields in response data: %s", ", ".join(missing_fields))
+
+            # Ensure returned data meets expected structure
             return {
-                "frame_data": data.get(self.data_field, []),
-                "min_value": data.get(self.lowest_field, 0.0),
-                "max_value": data.get(self.highest_field, 0.0),
-                "avg_value": data.get(self.average_field, 0.0),
+                "frame_data": frame_data if frame_data is not None else [],
+                "min_value": min_value if min_value is not None else 0.0,
+                "max_value": max_value if max_value is not None else 0.0,
+                "avg_value": avg_value if avg_value is not None else 0.0,
             }
+
         except Exception as e:
             raise UpdateFailed(f"Error communicating with API: {e}")
