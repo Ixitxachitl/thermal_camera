@@ -63,6 +63,11 @@ class ThermalCameraTemperatureSensor(SensorEntity):
         await self.coordinator.async_request_refresh()
         data = self.coordinator.data
 
+        # Skip if no data yet, log as info instead of error
+        if data is None:
+            _LOGGER.info("No data available from coordinator yet.")
+            return
+
         # Check if data is available and has the required field
         if data:
             temp_value = data.get(self._sensor_type)

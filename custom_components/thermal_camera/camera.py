@@ -164,6 +164,11 @@ class ThermalCamera(Camera):
         await self.coordinator.async_request_refresh()
         data = self.coordinator.data
 
+        # Skip if no data yet, log as info instead of error
+        if data is None:
+            _LOGGER.info("No data available from coordinator yet.")
+            return
+
         # Ensure data is available before proceeding
         if data:
             frame_data = data.get("frame_data")

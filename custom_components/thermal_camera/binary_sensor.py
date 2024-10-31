@@ -92,6 +92,11 @@ class ThermalMotionSensor(BinarySensorEntity):
         await self.coordinator.async_request_refresh()
         data = self.coordinator.data
 
+        # Skip if no data yet, log as info instead of error
+        if data is None:
+            _LOGGER.info("No data available from coordinator yet.")
+            return
+        
         # Check if data is available and contains required fields
         if data:
             avg_temp = data.get(self._average_field)
