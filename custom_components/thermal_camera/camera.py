@@ -132,23 +132,20 @@ class ThermalCamera(Camera):
         response = web.StreamResponse(
             status=200,
             reason='OK',
-            headers={
-                'Content-Type': 'multipart/x-mixed-replace; boundary=--frame'
-            }
+            headers={'Content-Type': 'multipart/x-mixed-replace; boundary=--frame'}
         )
         await response.prepare(request)
 
         try:
             while True:
-                # Safely read the frame
                 async with self._frame_lock:
                     frame = self._frame
 
+                # If no frame data, provide a placeholder image or empty response
                 if frame:
-                    await response.write(
-                        b"--frame\r\n"
-                        b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
-                    )
+                    await response.write(b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
+                else:
+                    _LOGGER.info("MJPEG stream has no frame data; waiting for update.")
                 await asyncio.sleep(0.1)
         except asyncio.CancelledError:
             pass
@@ -158,22 +155,21 @@ class ThermalCamera(Camera):
         """Request a data refresh from the coordinator and update the state."""
         data = self.coordinator.data
 
-        # Skip if no data yet, log as info instead of error
-        if data is None:
-            _LOGGER.info("No data available from coordinator yet.")
+        # Skip processing if data is unavailable or incomplete
+        if not data or not data["frame_data"]:
+            _LOGGER.info("No valid frame data available from coordinator.")
             return
 
-        # Retrieve required data fields
-        frame_data = data.get("frame_data")
-        min_value = data.get("min_value")
-        max_value = data.get("max_value")
-        avg_value = data.get("avg_value")
+        # Process the frame only if complete data is available
+        frame_data = data["frame_data"]
+        min_value = data["min_value"]
+        max_value = data["max_value"]
+        avg_value = data["avg_value"]
 
         if frame_data and min_value is not None and max_value is not None and avg_value is not None:
-            # Process the frame with verified data
             self._frame = self.process_frame(frame_data, min_value, max_value, avg_value)
         else:
-            _LOGGER.error("Incomplete data received from coordinator.")
+            _LOGGER.warning("Incomplete data from coordinator; skipping frame processing.")
 
     @property
     def unique_id(self):
