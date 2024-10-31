@@ -155,21 +155,27 @@ class ThermalCamera(Camera):
         """Request a data refresh from the coordinator and update the state."""
         data = self.coordinator.data
 
-        # Skip processing if data is unavailable or incomplete
-        if not data or not data["frame_data"]:
-            _LOGGER.info("No valid frame data available from coordinator.")
+        # Skip if no data yet, log as info instead of error
+        if data is None:
+            _LOGGER.info("No data available from coordinator yet.")
             return
 
-        # Process the frame only if complete data is available
-        frame_data = data["frame_data"]
-        min_value = data["min_value"]
-        max_value = data["max_value"]
-        avg_value = data["avg_value"]
+        # Retrieve required data fields
+        frame_data = data.get("frame_data")
+        min_value = data.get("min_value")
+        max_value = data.get("max_value")
+        avg_value = data.get("avg_value")
 
         if frame_data and min_value is not None and max_value is not None and avg_value is not None:
-            self._frame = self.process_frame(frame_data, min_value, max_value, avg_value)
+            try:
+                # Ensure frame_data is a NumPy array with the correct shape
+                frame_data = np.array(frame_data).reshape(self._rows, self._cols)
+                # Process the frame with verified data
+                self._frame = self.process_frame(frame_data, min_value, max_value, avg_value)
+            except ValueError as e:
+                _LOGGER.error(f"Error reshaping frame data: {e}")
         else:
-            _LOGGER.warning("Incomplete data from coordinator; skipping frame processing.")
+            _LOGGER.error("Incomplete data received from coordinator.")
 
     @property
     def unique_id(self):
