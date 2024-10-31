@@ -74,13 +74,24 @@ async def async_reload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     # Unload the camera, binary sensor, and temperature sensor entities
-    unload_ok = all(
-        await hass.config_entries.async_forward_entry_unload(config_entry, platform)
-        for platform in ["camera", "binary_sensor", "sensor"]
-    )
+    platforms = ["camera", "binary_sensor", "sensor"]
+    unload_results = []
+
+    for platform in platforms:
+        try:
+            result = await hass.config_entries.async_forward_entry_unload(config_entry, platform)
+            unload_results.append(result)
+            if not result:
+                _LOGGER.error(f"Failed to unload platform {platform} for entry {config_entry.entry_id}")
+        except Exception as e:
+            _LOGGER.error(f"Exception unloading platform {platform}: {e}")
+            unload_results.append(False)
+
+    unload_ok = all(unload_results)
 
     # Clean up integration data if all platforms are unloaded successfully
-    if unload_ok:
+    if unload_ok and config_entry.entry_id in hass.data[DOMAIN]:
         hass.data[DOMAIN].pop(config_entry.entry_id)
 
     return unload_ok
+
