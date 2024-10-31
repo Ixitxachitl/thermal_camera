@@ -14,7 +14,7 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name="Thermal Camera Data Coordinator",
-            update_interval=timedelta(seconds=0.1),  # Define refresh interval as needed
+            update_interval=timedelta(seconds=0.1),  # Adjust interval as needed
         )
         self.session = session
         self.url = url
@@ -26,14 +26,17 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
             async with self.session.get(f"{self.url}/{self.path}") as response:
                 if response.status != 200:
                     raise UpdateFailed(f"Failed to fetch data: {response.status}")
-                data = await response.json()
+                try:
+                    data = await response.json()
+                except aiohttp.ContentTypeError:
+                    raise UpdateFailed("Response not in JSON format.")
 
-            # Only return relevant data fields to the camera
+            # Return relevant data fields with defaults to prevent missing keys
             return {
-                "frame_data": data.get("frame_data"),
-                "min_value": data.get("min_value"),
-                "max_value": data.get("max_value"),
-                "avg_value": data.get("avg_value"),
+                "frame_data": data.get("frame_data", []),
+                "min_value": data.get("min_value", 0.0),
+                "max_value": data.get("max_value", 0.0),
+                "avg_value": data.get("avg_value", 0.0),
             }
         except Exception as e:
             raise UpdateFailed(f"Error communicating with API: {e}")
