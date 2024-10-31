@@ -12,8 +12,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     config = config_entry.data
     name = config.get(CONF_NAME, DEFAULT_NAME)
     motion_threshold = config.get("motion_threshold", DEFAULT_MOTION_THRESHOLD)
-    average_field = config.get("average_field", DEFAULT_AVERAGE_FIELD)
-    highest_field = config.get("highest_field", DEFAULT_HIGHEST_FIELD)
 
     # Retrieve the coordinator from the shared integration data
     coordinator = hass.data[DOMAIN].get(config_entry.entry_id).get("coordinator")
@@ -32,8 +30,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             name=name,
             coordinator=coordinator,
             motion_threshold=motion_threshold,
-            average_field=average_field,
-            highest_field=highest_field,
             config_entry=config_entry,
             unique_id=unique_id
         )
