@@ -71,17 +71,22 @@ async def async_reload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     await async_unload_entry(hass, config_entry)
     await async_setup_entry(hass, config_entry)
 
+import asyncio
+
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     platforms = ["camera", "binary_sensor", "sensor"]
-    unload_ok = all(
-        await hass.config_entries.async_forward_entry_unload(config_entry, platform)
-        for platform in platforms
+    
+    # Use asyncio.gather to await each unload operation
+    unload_results = await asyncio.gather(
+        *[hass.config_entries.async_forward_entry_unload(config_entry, platform) for platform in platforms]
     )
 
-    # Only clean up data if all platforms unload successfully
+    # Ensure unload_ok is True only if all platforms are unloaded successfully
+    unload_ok = all(unload_results)
+
+    # Clean up integration data if all platforms are unloaded successfully
     if unload_ok and config_entry.entry_id in hass.data[DOMAIN]:
         hass.data[DOMAIN].pop(config_entry.entry_id)
 
     return unload_ok
-
