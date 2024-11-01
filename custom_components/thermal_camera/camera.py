@@ -96,7 +96,7 @@ class ThermalCamera(Camera):
         self._session = session
         self._unique_id = unique_id
         self._frame = None  # Initialize frame as None
-        self._frame_lock = asyncio.Lock()
+        self._frame_lock = threading.Lock()
         self._mjpeg_port = mjpeg_port
         self._desired_height = desired_height
         self._last_frame_data = None  # Store a hash of the last processed frame
@@ -137,7 +137,7 @@ class ThermalCamera(Camera):
 
         try:
             while True:
-                async with self._frame_lock:
+                with self._frame_lock:
                     frame = self._frame
 
                 if frame:
@@ -157,13 +157,13 @@ class ThermalCamera(Camera):
             _LOGGER.info("No valid frame data available from coordinator.")
             return
 
-        # Convert the frame data to a checksum for change detection
+        # Convert frame_data to a NumPy array and compute its checksum
         frame_data = np.array(data["frame_data"]).reshape(self._rows, self._cols)
         frame_checksum = hashlib.md5(frame_data.tobytes()).hexdigest()
 
-        # Only update if the frame data has changed
+        # Update frame only if checksum has changed
         if frame_checksum != self._last_frame_data:
-            async with self._frame_lock:
+            with self._frame_lock:
                 self._frame = process_frame(
                     frame_data,
                     data["min_value"],
@@ -175,7 +175,7 @@ class ThermalCamera(Camera):
                     self._font,
                     self._desired_height
                 )
-                self._last_frame_data = frame_checksum  # Update the last frame checksum
+                self._last_frame_data = frame_checksum
 
     @property
     def unique_id(self):
