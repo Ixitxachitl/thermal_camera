@@ -199,7 +199,7 @@ class ThermalCamera(Camera):
 
     async def async_camera_image(self, width=None, height=None):
         """Return the camera image asynchronously."""
-        async with self._frame_lock:
+        with self._frame_lock:
             return self._frame
 
     def get_local_ip(self):
