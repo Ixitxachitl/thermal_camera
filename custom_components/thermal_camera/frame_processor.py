@@ -40,21 +40,32 @@ def map_to_color(value, min_value, max_value):
     if min_value == max_value:
         return (255, 255, 255)  # White color or any default color choice
 
-    # Normalize the value
+    # Normalize the value between 0 and 1
     normalized = max(0.0, min(1.0, (value - min_value) / (max_value - min_value)))
-    
-    if normalized < 0.25:  # Black to Blue
-        return (0, 0, int(255 * (normalized / 0.25)))
-    elif normalized < 0.5:  # Blue to Green
-        blue = int(255 * (1 - (normalized - 0.25) / 0.25))
-        green = int(255 * ((normalized - 0.25) / 0.25))
-        return (0, green, blue)
-    elif normalized < 0.75:  # Green to Yellow
-        return (int(255 * ((normalized - 0.5) / 0.25)), 255, 0)
-    elif normalized < 0.9:  # Yellow to Red
-        return (255, int(255 * (1 - (normalized - 0.75) / 0.15)), 0)
+
+    # Gradient interpolation: Black-Blue-Green-Yellow-Red-White
+    if normalized < 0.2:  # Black to Blue
+        red = 0
+        green = 0
+        blue = int(255 * (normalized / 0.2))
+    elif normalized < 0.4:  # Blue to Green
+        red = 0
+        green = int(255 * ((normalized - 0.2) / 0.2))
+        blue = 255 - green
+    elif normalized < 0.6:  # Green to Yellow
+        red = int(255 * ((normalized - 0.4) / 0.2))
+        green = 255
+        blue = 0
+    elif normalized < 0.8:  # Yellow to Red
+        red = 255
+        green = int(255 * (1 - (normalized - 0.6) / 0.2))
+        blue = 0
     else:  # Red to White
-        return (255, int(255 * ((normalized - 0.9) / 0.1)), int(255 * ((normalized - 0.9) / 0.1)))
+        red = 255
+        green = int(255 * ((normalized - 0.8) / 0.2))
+        blue = green
+
+    return (red, green, blue)
 
 def image_to_jpeg_bytes(img):
     """Convert PIL image to JPEG bytes."""
