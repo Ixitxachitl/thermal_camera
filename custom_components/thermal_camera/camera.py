@@ -249,7 +249,7 @@ class ThermalCamera(Camera):
     async def async_added_to_hass(self):
         """Called when the entity is added to Home Assistant."""
         # Now attach the listener since hass is guaranteed to be available
-        self._remove_listener = self.coordinator.async_add_listener(self.async_update) 
+        self._remove_listener = self.coordinator.async_add_listener(lambda: self.hass.async_create_task(self.async_update())) 
 
     async def async_will_remove_from_hass(self):
         """Clean up when the sensor is removed from Home Assistant."""
