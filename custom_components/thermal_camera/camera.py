@@ -116,7 +116,7 @@ class ThermalCamera(Camera):
         # threading.Thread(target=self.start_server).start()
 
         # Listen for updates from the coordinator
-        self._remove_listener = self.coordinator.async_add_listener(self.async_write_ha_state)
+        self._remove_listener = None
 
     # def start_server(self):
     #     """Start the MJPEG server for streaming."""
@@ -158,11 +158,17 @@ class ThermalCamera(Camera):
             _LOGGER.info("No valid frame data available from coordinator.")
             return
 
-        # Convert frame_data to a NumPy array and compute its checksum
-        frame_data = np.array(data["frame_data"]).reshape(self._rows, self._cols)
-        frame_checksum = hashlib.md5(frame_data.tobytes()).hexdigest()
+        # Check if frame_data is empty and handle appropriately
+        frame_data = data["frame_data"]
+        if len(frame_data) == 0:
+            _LOGGER.warning("Received empty frame_data. Using default empty array.")
+            frame_data = np.zeros((self._rows, self._cols))  # Create an empty array of the correct shape
+        else:
+            # Convert frame_data to a NumPy array and reshape
+            frame_data = np.array(frame_data).reshape(self._rows, self._cols)
 
-        # Update frame only if checksum has changed
+        # Compute checksum and update frame if necessary
+        frame_checksum = hashlib.md5(frame_data.tobytes()).hexdigest()
         if frame_checksum != self._last_frame_data:
             self._frame = process_frame(
                 frame_data,
@@ -231,7 +237,12 @@ class ThermalCamera(Camera):
     def should_poll(self):
         """Camera polling is required."""
         return True
-    
+
+    async def async_added_to_hass(self):
+        """Called when the entity is added to Home Assistant."""
+        # Now attach the listener since hass is guaranteed to be available
+        self._remove_listener = self.coordinator.async_add_listener(self.async_write_ha_state) 
+
     async def async_will_remove_from_hass(self):
         """Clean up when the sensor is removed from Home Assistant."""
         if self._remove_listener:

@@ -48,7 +48,7 @@ class ThermalMotionSensor(BinarySensorEntity):
         self._unique_id = unique_id
 
         # Register the entity as a listener to the coordinator’s data updates
-        self._remove_listener = self.coordinator.async_add_listener(self.async_write_ha_state)
+        self._remove_listener = None
 
     @property
     def unique_id(self):
@@ -97,6 +97,11 @@ class ThermalMotionSensor(BinarySensorEntity):
             _LOGGER.debug(f"{self.name}: Motion state updated. Temperature difference: {temp_diff}, Threshold: {self._motion_threshold}")
         else:
             _LOGGER.error(f"{self.name}: Missing required temperature data fields from coordinator.")
+
+    async def async_added_to_hass(self):
+        """Called when the entity is added to Home Assistant."""
+        # Now attach the listener since hass is guaranteed to be available
+        self._remove_listener = self.coordinator.async_add_listener(self.async_write_ha_state)
 
     async def async_will_remove_from_hass(self):
         """Clean up when the sensor is removed from Home Assistant."""
