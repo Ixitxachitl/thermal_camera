@@ -1,17 +1,24 @@
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 
 def process_frame(frame_data, min_value, max_value, avg_value, rows, cols, resample_method, font, desired_height):
     """Convert frame data to an image with overlays."""
-    img = Image.new("RGB", (cols, rows))
-    draw = ImageDraw.Draw(img)
+    # Vectorized color mapping to avoid loops
+    normalized_data = np.clip((frame_data - min_value) / (max_value - min_value), 0, 1)
+    rgb_array = np.zeros((rows, cols, 3), dtype=np.uint8)
+    
+    # Map normalized data to RGB values using vectorized ranges
+    rgb_array[..., 0] = np.where(normalized_data >= 0.5, np.minimum(255, 510 * (normalized_data - 0.5)), 0)
+    rgb_array[..., 1] = np.where(
+        (normalized_data >= 0.25) & (normalized_data < 0.75),
+        np.minimum(255, 510 * (0.75 - abs(normalized_data - 0.5))),
+        0,
+    )
+    rgb_array[..., 2] = np.where(normalized_data < 0.5, np.minimum(255, 510 * (0.5 - normalized_data)), 0)
 
-    # Map frame data to colors
-    for r in range(rows):
-        for c in range(cols):
-            color = map_to_color(frame_data[r, c], min_value, max_value)
-            draw.point((c, r), fill=color)
+    # Create a PIL image from the RGB array
+    img = Image.fromarray(rgb_array, "RGB")
 
     # Scale the image
     scale_factor = 20
@@ -55,7 +62,7 @@ def draw_overlay(img, frame_data, min_value, max_value, avg_value, scale_factor,
 
     # Locate the hottest pixel for the reticle
     max_index = np.argmax(frame_data)
-    max_row, max_col = divmod(max_index, img.width // scale_factor)
+    max_row, max_col = divmod(max_index, frame_data.shape[1])
     center_x = (max_col + 0.5) * scale_factor
     center_y = (max_row + 0.5) * scale_factor
     reticle_radius = 9

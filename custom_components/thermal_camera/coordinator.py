@@ -31,7 +31,7 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
         """Fetch data from the camera API, retaining last known data if fetch fails."""
         try:
             _LOGGER.debug("Attempting to fetch data from the thermal camera API.")
-            async with async_timeout.timeout(5):  # Set a 5-second timeout for fetching
+            async with async_timeout.timeout(2):  # Set a 2-second timeout for fetching
                 async with self.session.get(f"{self.url}/{self.path}") as response:
                     if response.status != 200:
                         _LOGGER.warning(f"Failed to fetch data: {response.status}")
