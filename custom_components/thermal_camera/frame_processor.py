@@ -3,31 +3,26 @@ from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 
 def process_frame(frame_data, min_value, max_value, avg_value, rows, cols, resample_method, font, desired_height):
-    """Convert frame data to an image with overlays."""
-    # Vectorized color mapping to avoid loops
-    normalized_data = np.clip((frame_data - min_value) / (max_value - min_value), 0, 1)
+    """Convert frame data to an image with overlays, ensuring distinct colors per pixel."""
+    # Prepare an empty RGB array for storing colors
     rgb_array = np.zeros((rows, cols, 3), dtype=np.uint8)
-    
-    # Map normalized data to RGB values using vectorized ranges
-    rgb_array[..., 0] = np.where(normalized_data >= 0.5, np.minimum(255, 510 * (normalized_data - 0.5)), 0)
-    rgb_array[..., 1] = np.where(
-        (normalized_data >= 0.25) & (normalized_data < 0.75),
-        np.minimum(255, 510 * (0.75 - abs(normalized_data - 0.5))),
-        0,
-    )
-    rgb_array[..., 2] = np.where(normalized_data < 0.5, np.minimum(255, 510 * (0.5 - normalized_data)), 0)
+
+    # Apply colors to each pixel in the RGB array
+    for r in range(rows):
+        for c in range(cols):
+            rgb_array[r, c] = map_to_color(frame_data[r, c], min_value, max_value)
 
     # Create a PIL image from the RGB array
     img = Image.fromarray(rgb_array, "RGB")
 
-    # Scale the image
+    # Scale the image with the specified resampling method
     scale_factor = 20
     img = img.resize((cols * scale_factor, rows * scale_factor), resample=resample_method)
 
-    # Draw overlay elements (e.g., reticle, scale bar)
+    # Draw overlay elements (e.g., reticle, scale bar) on the upscaled image
     draw_overlay(img, frame_data, min_value, max_value, avg_value, scale_factor, font)
 
-    # Resize to desired height if needed
+    # Resize to desired height if needed, using the specified resample method
     if img.height != desired_height:
         aspect_ratio = img.width / img.height
         img = img.resize((int(desired_height * aspect_ratio), desired_height), resample=resample_method)
