@@ -151,6 +151,7 @@ class ThermalCamera(Camera):
 
     async def async_update(self):
         """Request a data refresh from the coordinator and update the frame only if there's new data."""
+        _LOGGER.debug("ThermalCamera async_update called")
         data = self.coordinator.data
 
         if data is None or "frame_data" not in data:
@@ -163,7 +164,6 @@ class ThermalCamera(Camera):
 
         # Update frame only if checksum has changed
         if frame_checksum != self._last_frame_data:
-            # with self._frame_lock:
             self._frame = process_frame(
                 frame_data,
                 data["min_value"],
@@ -176,6 +176,7 @@ class ThermalCamera(Camera):
                 self._desired_height
             )
             self._last_frame_data = frame_checksum
+            _LOGGER.debug("Frame updated with new data.")
 
     @property
     def unique_id(self):

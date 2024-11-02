@@ -46,6 +46,8 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
                         "avg_value": data.get(self.average_field, 0.0),
                     }
                     _LOGGER.debug("Data fetched successfully.")
+                    # After successfully fetching data, ensure the coordinator updates entities
+                    await self.async_request_refresh()
                     return self._last_data
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
