@@ -1,11 +1,11 @@
-import asyncio
+# import asyncio
 import logging
 import os
 import uuid
 import aiohttp
-import socket
+# import socket
 from aiohttp import web
-import threading
+# import threading
 from homeassistant.components.camera import Camera
 from homeassistant.helpers.network import get_url
 from .constants import DOMAIN, DEFAULT_NAME, DEFAULT_ROWS, DEFAULT_COLS, DEFAULT_DATA_FIELD, DEFAULT_LOWEST_FIELD, DEFAULT_HIGHEST_FIELD, DEFAULT_AVERAGE_FIELD, DEFAULT_RESAMPLE_METHOD, DEFAULT_MJPEG_PORT, DEFAULT_DESIRED_HEIGHT
@@ -96,7 +96,7 @@ class ThermalCamera(Camera):
         self._session = session
         self._unique_id = unique_id
         self._frame = None  # Initialize frame as None
-        self._frame_lock = threading.Lock()
+        # self._frame_lock = threading.Lock()
         self._mjpeg_port = mjpeg_port
         self._desired_height = desired_height
         self._last_frame_data = None  # Store a hash of the last processed frame
@@ -109,45 +109,45 @@ class ThermalCamera(Camera):
             self._font = ImageFont.load_default()
 
         # Set up MJPEG server for streaming
-        self._app = web.Application()
-        self._app.router.add_get('/mjpeg', self.handle_mjpeg)
-        self._runner = web.AppRunner(self._app)
-        self._loop = asyncio.get_event_loop()
-        threading.Thread(target=self.start_server).start()
+        # self._app = web.Application()
+        # self._app.router.add_get('/mjpeg', self.handle_mjpeg)
+        # self._runner = web.AppRunner(self._app)
+        # self._loop = asyncio.get_event_loop()
+        # threading.Thread(target=self.start_server).start()
 
         # Listen for updates from the coordinator
         self._remove_listener = self.coordinator.async_add_listener(self.async_write_ha_state)
 
-    def start_server(self):
-        """Start the MJPEG server for streaming."""
-        async def run_server():
-            await self._runner.setup()
-            site = web.TCPSite(self._runner, '0.0.0.0', self._mjpeg_port)
-            await site.start()
+    # def start_server(self):
+    #     """Start the MJPEG server for streaming."""
+    #     async def run_server():
+    #         await self._runner.setup()
+    #         site = web.TCPSite(self._runner, '0.0.0.0', self._mjpeg_port)
+    #         await site.start()
 
-        asyncio.run_coroutine_threadsafe(run_server(), self._loop)
+    #     asyncio.run_coroutine_threadsafe(run_server(), self._loop)
 
-    async def handle_mjpeg(self, request):
-        response = web.StreamResponse(
-            status=200,
-            reason='OK',
-            headers={'Content-Type': 'multipart/x-mixed-replace; boundary=--frame'}
-        )
-        await response.prepare(request)
+    # async def handle_mjpeg(self, request):
+    #     response = web.StreamResponse(
+    #         status=200,
+    #         reason='OK',
+    #         headers={'Content-Type': 'multipart/x-mixed-replace; boundary=--frame'}
+    #     )
+    #     await response.prepare(request)
 
-        try:
-            while True:
-                with self._frame_lock:
-                    frame = self._frame
+    #     try:
+    #         while True:
+    #             with self._frame_lock:
+    #                 frame = self._frame
 
-                if frame:
-                    await response.write(b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
-                else:
-                    _LOGGER.info("MJPEG stream has no frame data; waiting for update.")
-                await asyncio.sleep(0.1)
-        except asyncio.CancelledError:
-            pass
-        return response
+    #             if frame:
+    #                 await response.write(b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
+    #             else:
+    #                 _LOGGER.info("MJPEG stream has no frame data; waiting for update.")
+    #             await asyncio.sleep(0.1)
+    #     except asyncio.CancelledError:
+    #         pass
+    #     return response
 
     async def async_update(self):
         """Request a data refresh from the coordinator and update the frame only if there's new data."""
@@ -163,19 +163,19 @@ class ThermalCamera(Camera):
 
         # Update frame only if checksum has changed
         if frame_checksum != self._last_frame_data:
-            with self._frame_lock:
-                self._frame = process_frame(
-                    frame_data,
-                    data["min_value"],
-                    data["max_value"],
-                    data["avg_value"],
-                    self._rows,
-                    self._cols,
-                    self._resample_method,
-                    self._font,
-                    self._desired_height
-                )
-                self._last_frame_data = frame_checksum
+            # with self._frame_lock:
+            self._frame = process_frame(
+                frame_data,
+                data["min_value"],
+                data["max_value"],
+                data["avg_value"],
+                self._rows,
+                self._cols,
+                self._resample_method,
+                self._font,
+                self._desired_height
+            )
+            self._last_frame_data = frame_checksum
 
     @property
     def unique_id(self):
@@ -199,19 +199,19 @@ class ThermalCamera(Camera):
 
     async def async_camera_image(self, width=None, height=None):
         """Return the camera image asynchronously."""
-        with self._frame_lock:
-            return self._frame
+        # with self._frame_lock:
+        return self._frame
 
-    def get_local_ip(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            s.connect(("8.8.8.8", 80))
-            local_ip = s.getsockname()[0]
-        except Exception:
-            local_ip = "127.0.0.1"
-        finally:
-            s.close()
-        return local_ip
+    # def get_local_ip(self):
+    #     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    #     try:
+    #         s.connect(("8.8.8.8", 80))
+    #         local_ip = s.getsockname()[0]
+    #     except Exception:
+    #         local_ip = "127.0.0.1"
+    #     finally:
+    #         s.close()
+    #     return local_ip
 
     async def async_stream_source(self):
         """Return the URL of the video stream."""
@@ -222,8 +222,9 @@ class ThermalCamera(Camera):
                 return f"{get_url(self.hass)}/api/camera_proxy_stream/{self.entity_id}?token={access_token}"
         
         # Fallback URL if Home Assistant is not available
-        local_ip = self.get_local_ip()
-        return f'http://{local_ip}:{self._mjpeg_port}/mjpeg'
+        # local_ip = self.get_local_ip()
+        # eturn f'http://{local_ip}:{self._mjpeg_port}/mjpeg'
+        return None
       
     @property
     def should_poll(self):
@@ -236,10 +237,10 @@ class ThermalCamera(Camera):
             self._remove_listener()  # Remove the listener when removing the entity
             self._remove_listener = None
 
-        # Stop the MJPEG server properly
-        if self._runner is not None:
-            await self._runner.cleanup()
+        # # Stop the MJPEG server properly
+        # if self._runner is not None:
+        #     await self._runner.cleanup()
 
-        # Ensure all related resources are cleaned up
-        if self._session and not self._session.closed:
-            await self._session.close()
+        # # Ensure all related resources are cleaned up
+        # if self._session and not self._session.closed:
+        #     await self._session.close()

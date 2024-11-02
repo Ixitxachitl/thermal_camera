@@ -23,7 +23,7 @@ CONFIG_SCHEMA = vol.Schema({
     vol.Optional("average_field", default=DEFAULT_AVERAGE_FIELD): str,
     vol.Optional("resample", default=DEFAULT_RESAMPLE_METHOD): vol.In(["NEAREST", "BILINEAR", "BICUBIC", "LANCZOS"]),
     vol.Optional("motion_threshold", default=DEFAULT_MOTION_THRESHOLD): int,
-    vol.Optional("mjpeg_port", default=DEFAULT_MJPEG_PORT): int,
+    # vol.Optional("mjpeg_port", default=DEFAULT_MJPEG_PORT): int,
     vol.Optional("desired_height", default=DEFAULT_DESIRED_HEIGHT): int,
 })
 
@@ -88,7 +88,7 @@ class ThermalCameraOptionsFlowHandler(config_entries.OptionsFlow):
             vol.Optional("average_field", default=self.config_entry.data.get("average_field", DEFAULT_AVERAGE_FIELD)): str,
             vol.Optional("resample", default=self.config_entry.data.get("resample", DEFAULT_RESAMPLE_METHOD)): vol.In(["NEAREST", "BILINEAR", "BICUBIC", "LANCZOS"]),
             vol.Optional("motion_threshold", default=self.config_entry.data.get("motion_threshold", DEFAULT_MOTION_THRESHOLD)): int,
-            vol.Optional("mjpeg_port", default=self.config_entry.data.get("mjpeg_port", DEFAULT_MJPEG_PORT)): int,
+            # vol.Optional("mjpeg_port", default=self.config_entry.data.get("mjpeg_port", DEFAULT_MJPEG_PORT)): int,
             vol.Optional("desired_height", default=self.config_entry.data.get("desired_height", DEFAULT_DESIRED_HEIGHT)): int,
         })
 
