@@ -36,7 +36,13 @@ def process_frame(frame_data, min_value, max_value, avg_value, rows, cols, resam
 
 def map_to_color(value, min_value, max_value):
     """Map thermal value to a color gradient."""
+    # Avoid division by zero by setting a default normalized value if min_value == max_value
+    if min_value == max_value:
+        return (255, 255, 255)  # White color or any default color choice
+
+    # Normalize the value
     normalized = max(0.0, min(1.0, (value - min_value) / (max_value - min_value)))
+    
     if normalized < 0.25:  # Black to Blue
         return (0, 0, int(255 * (normalized / 0.25)))
     elif normalized < 0.5:  # Blue to Green
