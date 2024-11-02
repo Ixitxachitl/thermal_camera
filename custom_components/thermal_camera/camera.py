@@ -151,7 +151,10 @@ class ThermalCamera(Camera):
 
     async def async_update(self):
         """Request a data refresh from the coordinator and update the frame only if there's new data."""
-        if not self._frame_lock.locked():  # Check if lock is free
+        _LOGGER.debug("ThermalCamera async_update called")
+
+        # Lock to prevent overlapping frame generation
+        if not self._frame_lock.locked():
             async with self._frame_lock:
                 data = self.coordinator.data
 
@@ -159,10 +162,17 @@ class ThermalCamera(Camera):
                     _LOGGER.info("No valid frame data available from coordinator.")
                     return
 
-                # Convert frame_data to a NumPy array and update the frame
-                frame_data = np.array(data["frame_data"]).reshape(self._rows, self._cols)
-                frame_checksum = hashlib.md5(frame_data.tobytes()).hexdigest()
+                # Check if frame_data is empty and handle appropriately
+                frame_data = data["frame_data"]
+                if len(frame_data) == 0:
+                    _LOGGER.warning("Received empty frame_data. Using default empty array.")
+                    frame_data = np.zeros((self._rows, self._cols))  # Create an empty array of the correct shape
+                else:
+                    # Convert frame_data to a NumPy array and reshape
+                    frame_data = np.array(frame_data).reshape(self._rows, self._cols)
 
+                # Compute checksum and update frame if necessary
+                frame_checksum = hashlib.md5(frame_data.tobytes()).hexdigest()
                 if frame_checksum != self._last_frame_data:
                     self._frame = process_frame(
                         frame_data,
@@ -177,6 +187,8 @@ class ThermalCamera(Camera):
                     )
                     self._last_frame_data = frame_checksum
                     _LOGGER.debug("Frame updated with new data.")
+                else:
+                    _LOGGER.debug("No changes in frame data; update skipped.")
         else:
             _LOGGER.debug("Skipped frame generation to avoid overlap.")
 
