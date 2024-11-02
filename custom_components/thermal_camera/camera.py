@@ -1,4 +1,4 @@
-# import asyncio
+import asyncio
 import logging
 import os
 import uuid
@@ -96,7 +96,7 @@ class ThermalCamera(Camera):
         self._session = session
         self._unique_id = unique_id
         self._frame = None  # Initialize frame as None
-        # self._frame_lock = threading.Lock()
+        self._frame_lock = asyncio.Lock()
         self._mjpeg_port = mjpeg_port
         self._desired_height = desired_height
         self._last_frame_data = None  # Store a hash of the last processed frame
@@ -151,38 +151,34 @@ class ThermalCamera(Camera):
 
     async def async_update(self):
         """Request a data refresh from the coordinator and update the frame only if there's new data."""
-        _LOGGER.debug("ThermalCamera async_update called")
-        data = self.coordinator.data
+        if not self._frame_lock.locked():  # Check if lock is free
+            async with self._frame_lock:
+                data = self.coordinator.data
 
-        if data is None or "frame_data" not in data:
-            _LOGGER.info("No valid frame data available from coordinator.")
-            return
+                if data is None or "frame_data" not in data:
+                    _LOGGER.info("No valid frame data available from coordinator.")
+                    return
 
-        # Check if frame_data is empty and handle appropriately
-        frame_data = data["frame_data"]
-        if len(frame_data) == 0:
-            _LOGGER.warning("Received empty frame_data. Using default empty array.")
-            frame_data = np.zeros((self._rows, self._cols))  # Create an empty array of the correct shape
+                # Convert frame_data to a NumPy array and update the frame
+                frame_data = np.array(data["frame_data"]).reshape(self._rows, self._cols)
+                frame_checksum = hashlib.md5(frame_data.tobytes()).hexdigest()
+
+                if frame_checksum != self._last_frame_data:
+                    self._frame = process_frame(
+                        frame_data,
+                        data["min_value"],
+                        data["max_value"],
+                        data["avg_value"],
+                        self._rows,
+                        self._cols,
+                        self._resample_method,
+                        self._font,
+                        self._desired_height
+                    )
+                    self._last_frame_data = frame_checksum
+                    _LOGGER.debug("Frame updated with new data.")
         else:
-            # Convert frame_data to a NumPy array and reshape
-            frame_data = np.array(frame_data).reshape(self._rows, self._cols)
-
-        # Compute checksum and update frame if necessary
-        frame_checksum = hashlib.md5(frame_data.tobytes()).hexdigest()
-        if frame_checksum != self._last_frame_data:
-            self._frame = process_frame(
-                frame_data,
-                data["min_value"],
-                data["max_value"],
-                data["avg_value"],
-                self._rows,
-                self._cols,
-                self._resample_method,
-                self._font,
-                self._desired_height
-            )
-            self._last_frame_data = frame_checksum
-            _LOGGER.debug("Frame updated with new data.")
+            _LOGGER.debug("Skipped frame generation to avoid overlap.")
 
     @property
     def unique_id(self):
