@@ -118,6 +118,6 @@ If the camera feed shows a broken image, check:
 - Review the Home Assistant logs for error messages.
 
 ### Font License
-This integration includes the DejaVu font. The license for the DejaVu font can be found in the `custom_components/thermal_camera/fonts/DejaVuSans-License.txt`.
+This integration includes the DejaVu font. The license for the DejaVu font can be found in the `custom_components/thermal_camera/DejaVuSans-License.txt`.
 
 For further assistance, feel free to open an issue on the GitHub repository.
