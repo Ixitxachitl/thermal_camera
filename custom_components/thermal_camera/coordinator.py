@@ -15,7 +15,7 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name="Thermal Camera Data Coordinator",
-            update_interval=timedelta(seconds=2),  # Slowed down to 2s
+            update_interval=timedelta(seconds=2),
         )
         self.session = session
         self.url = url
@@ -35,7 +35,7 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
         """Fetch data from the camera API, retaining last known data if fetch fails."""
         try:
             _LOGGER.debug("Attempting to fetch data from the thermal camera API.")
-            async with async_timeout.timeout(3):  # Shorter timeout for quicker failure
+            async with async_timeout.timeout(3):
                 async with self.session.get(f"{self.url}/{self.path}") as response:
                     if response.status != 200:
                         _LOGGER.warning(f"Failed to fetch data: {response.status}")
@@ -49,6 +49,10 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
                         "avg_value": data.get(self.average_field, 0.0),
                     }
                     _LOGGER.debug("Data fetched successfully.")
+
+                    # Notify listeners after successful data fetch
+                    self.async_update_listeners()
+
                     return self._last_data
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
