@@ -3,7 +3,7 @@ import logging
 import aiohttp
 from datetime import timedelta
 import async_timeout
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name="Thermal Camera Data Coordinator",
-            update_interval=timedelta(milliseconds=500),  # Restore fast 500ms updates
+            update_interval=timedelta(milliseconds=500),  # Keep fast 500ms updates
         )
         self.session = session
         self.url = url
@@ -35,11 +35,15 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
         """Fetch data from the camera API, retaining last known data if fetch fails."""
         try:
             _LOGGER.debug("Attempting to fetch data from the thermal camera API.")
-            async with async_timeout.timeout(5):  # Restore 5s timeout for slower hardware
-                async with self.session.get(f"{self.url}/{self.path}") as response:
+            start = asyncio.get_event_loop().time()
+            async with async_timeout.timeout(1.5):  # Faster timeout to detect issues sooner
+                async with self.session.get(f"{self.url}/{self.path}", headers={"Connection": "close"}) as response:
+                    duration = asyncio.get_event_loop().time() - start
+                    _LOGGER.debug(f"Fetch took {duration:.2f} seconds")
+
                     if response.status != 200:
                         _LOGGER.warning(f"Failed to fetch data: {response.status}")
-                        return self._last_data  # Return last known good data instead of raising
+                        return self._last_data
 
                     data = await response.json()
                     self._last_data = {
@@ -48,16 +52,15 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
                         "max_value": data.get(self.highest_field, 0.0),
                         "avg_value": data.get(self.average_field, 0.0),
                     }
-                    _LOGGER.debug("Data fetched successfully.")
+                    _LOGGER.debug("Data fetched and processed successfully.")
 
-                    # Notify listeners after successful data fetch
                     self.async_update_listeners()
 
                     return self._last_data
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
             _LOGGER.error(f"Network error fetching data: {e}")
-            return self._last_data  # On error, continue returning last known data
+            return self._last_data
         except Exception as e:
             _LOGGER.error(f"Unexpected error communicating with API: {e}")
-            return self._last_data  # On unknown error, continue returning last known data
+            return self._last_data
