@@ -162,6 +162,7 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
                     _LOGGER.debug("Connected to stream, reading frames")
                     backoff = 1.0
                     last_push_ts = 0.0  # monotonic seconds
+                    pending_payload: bytes | None = None
 
                     while True:
                         header = await resp.content.readexactly(4)
@@ -173,7 +174,22 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
                             _LOGGER.warning("Invalid frame length %s, closing stream", length)
                             break
                         payload = await resp.content.readexactly(length)
-                        values = self._parse_payload(payload)
+
+                        # Coalesce frames: avoid parsing for frames we won't push
+                        now_ts = time.monotonic()
+                        if (now_ts - last_push_ts) * 1000.0 < self.stream_push_ms:
+                            # keep only the latest payload
+                            pending_payload = payload
+                            continue
+
+                        # Use the latest payload (current or pending) for parsing
+                        if pending_payload is not None:
+                            payload_to_parse = pending_payload
+                            pending_payload = None
+                        else:
+                            payload_to_parse = payload
+
+                        values = self._parse_payload(payload_to_parse)
 
                         # If the parsed payload is an empty list, skip updating the
                         # last-known frame. Empty frames are noisy for consumers;
@@ -207,7 +223,6 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
                         }
 
                         # Throttle updates to Home Assistant to reduce load
-                        now_ts = time.monotonic()
                         if (now_ts - last_push_ts) * 1000.0 >= self.stream_push_ms:
                             last_push_ts = now_ts
                             try:
