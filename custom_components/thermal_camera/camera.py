@@ -1,11 +1,9 @@
 import asyncio
+import time
 import logging
 import os
 import uuid
 import aiohttp
-# import socket
-from aiohttp import web
-# import threading
 from homeassistant.components.camera import Camera
 from homeassistant.helpers.network import get_url
 from .constants import DOMAIN, DEFAULT_NAME, DEFAULT_ROWS, DEFAULT_COLS, DEFAULT_DATA_FIELD, DEFAULT_LOWEST_FIELD, DEFAULT_HIGHEST_FIELD, DEFAULT_AVERAGE_FIELD, DEFAULT_RESAMPLE_METHOD, DEFAULT_MJPEG_PORT, DEFAULT_DESIRED_HEIGHT
@@ -100,6 +98,9 @@ class ThermalCamera(Camera):
         self._mjpeg_port = mjpeg_port
         self._desired_height = desired_height
         self._last_frame_data = None  # Store a hash of the last processed frame
+        # Viewing/activity tracking: only render when recently viewed
+        self._last_image_request_ts = 0.0
+        self._view_window_sec = 3.0  # consider "viewed" if an image was requested within 3s
 
         # Load font data
         try:
@@ -108,89 +109,52 @@ class ThermalCamera(Camera):
             _LOGGER.error("Failed to load DejaVu font, using default font.")
             self._font = ImageFont.load_default()
 
-        # Set up MJPEG server for streaming
-        # self._app = web.Application()
-        # self._app.router.add_get('/mjpeg', self.handle_mjpeg)
-        # self._runner = web.AppRunner(self._app)
-        # self._loop = asyncio.get_event_loop()
-        # threading.Thread(target=self.start_server).start()
-
         # Listen for updates from the coordinator
         self._remove_listener = None
 
-    # def start_server(self):
-    #     """Start the MJPEG server for streaming."""
-    #     async def run_server():
-    #         await self._runner.setup()
-    #         site = web.TCPSite(self._runner, '0.0.0.0', self._mjpeg_port)
-    #         await site.start()
-
-    #     asyncio.run_coroutine_threadsafe(run_server(), self._loop)
-
-    # async def handle_mjpeg(self, request):
-    #     response = web.StreamResponse(
-    #         status=200,
-    #         reason='OK',
-    #         headers={'Content-Type': 'multipart/x-mixed-replace; boundary=--frame'}
-    #     )
-    #     await response.prepare(request)
-
-    #     try:
-    #         while True:
-    #             with self._frame_lock:
-    #                 frame = self._frame
-
-    #             if frame:
-    #                 await response.write(b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
-    #             else:
-    #                 _LOGGER.info("MJPEG stream has no frame data; waiting for update.")
-    #             await asyncio.sleep(0.1)
-    #     except asyncio.CancelledError:
-    #         pass
-    #     return response
-
     async def async_update(self):
-        """Request a data refresh from the coordinator and update the frame only if there's new data."""
-        _LOGGER.debug("ThermalCamera async_update called")
+        """Prepare data but avoid rendering unless recently viewed."""
+        # Only render if an image was requested recently (considered "viewed")
+        if (time.monotonic() - self._last_image_request_ts) > self._view_window_sec:
+            return
 
-        # Lock to prevent overlapping frame generation
-        if not self._frame_lock.locked():
-            async with self._frame_lock:
-                data = self.coordinator.data
+        if self._frame_lock.locked():
+            return
 
-                if data is None or "frame_data" not in data:
-                    _LOGGER.info("No valid frame data available from coordinator.")
-                    return
+        async with self._frame_lock:
+            data = self.coordinator.data
+            if not data or "frame_data" not in data:
+                # No data yet; don't log to avoid spam
+                return
 
-                # Check if frame_data is empty and handle appropriately
-                frame_data = data["frame_data"]
-                if len(frame_data) == 0:
-                    _LOGGER.warning("Received empty frame_data. Using default empty array.")
-                    frame_data = np.zeros((self._rows, self._cols))  # Create an empty array of the correct shape
-                else:
-                    # Convert frame_data to a NumPy array and reshape
-                    frame_data = np.array(frame_data).reshape(self._rows, self._cols)
+            frame_data = data.get("frame_data") or []
+            if not frame_data:
+                # Skip rendering when empty; avoid warning spam
+                return
 
-                # Compute checksum and update frame if necessary
-                frame_checksum = hashlib.md5(frame_data.tobytes()).hexdigest()
-                if frame_checksum != self._last_frame_data:
-                    self._frame = process_frame(
-                        frame_data,
-                        data["min_value"],
-                        data["max_value"],
-                        data["avg_value"],
-                        self._rows,
-                        self._cols,
-                        self._resample_method,
-                        self._font,
-                        self._desired_height
-                    )
-                    self._last_frame_data = frame_checksum
-                    _LOGGER.debug("Frame updated with new data.")
-                else:
-                    _LOGGER.debug("No changes in frame data; update skipped.")
-        else:
-            _LOGGER.debug("Skipped frame generation to avoid overlap.")
+            # Convert to numpy and reshape
+            try:
+                frame_nd = np.array(frame_data, dtype=float).reshape(self._rows, self._cols)
+            except Exception:
+                # If shape is unexpected, skip without logging loudly
+                return
+
+            frame_checksum = hashlib.md5(frame_nd.tobytes()).hexdigest()
+            if frame_checksum == self._last_frame_data:
+                return
+
+            self._frame = process_frame(
+                frame_nd,
+                data.get("min_value", 0.0),
+                data.get("max_value", 0.0),
+                data.get("avg_value", 0.0),
+                self._rows,
+                self._cols,
+                self._resample_method,
+                self._font,
+                self._desired_height,
+            )
+            self._last_frame_data = frame_checksum
 
     @property
     def unique_id(self):
@@ -214,19 +178,15 @@ class ThermalCamera(Camera):
 
     async def async_camera_image(self, width=None, height=None):
         """Return the camera image asynchronously."""
-        # with self._frame_lock:
+        # Mark as viewed
+        self._last_image_request_ts = time.monotonic()
+        # Ensure we have a frame ready; generate on-demand if needed
+        if self._frame is None:
+            try:
+                await self.async_update()
+            except Exception:
+                pass
         return self._frame
-
-    # def get_local_ip(self):
-    #     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    #     try:
-    #         s.connect(("8.8.8.8", 80))
-    #         local_ip = s.getsockname()[0]
-    #     except Exception:
-    #         local_ip = "127.0.0.1"
-    #     finally:
-    #         s.close()
-    #     return local_ip
 
     async def async_stream_source(self):
         """Return the URL of the video stream."""
@@ -236,9 +196,6 @@ class ThermalCamera(Camera):
             if access_token:
                 return f"{get_url(self.hass)}/api/camera_proxy_stream/{self.entity_id}?token={access_token}"
         
-        # Fallback URL if Home Assistant is not available
-        # local_ip = self.get_local_ip()
-        # eturn f'http://{local_ip}:{self._mjpeg_port}/mjpeg'
         return None
       
     @property
@@ -256,11 +213,3 @@ class ThermalCamera(Camera):
         if self._remove_listener:
             self._remove_listener()  # Remove the listener when removing the entity
             self._remove_listener = None
-
-        # # Stop the MJPEG server properly
-        # if self._runner is not None:
-        #     await self._runner.cleanup()
-
-        # # Ensure all related resources are cleaned up
-        # if self._session and not self._session.closed:
-        #     await self._session.close()
