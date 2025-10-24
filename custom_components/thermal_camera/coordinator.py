@@ -30,7 +30,7 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
     that constructs this class with (hass, session, url, path, data_field,
     lowest_field, highest_field, average_field) continues to work. Additional
     optional kwargs: width, height, update_interval_ms, use_stream,
-    stream_push_ms (throttle push frequency when streaming; default 100ms).
+    stream_push_ms (throttle push frequency when streaming; default ~66ms for ~15 FPS).
     """
 
     def __init__(
@@ -48,7 +48,7 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
         height: int = 24,
         update_interval_ms: int = 500,
         use_stream: bool = None,
-        stream_push_ms: int = 1000,
+        stream_push_ms: int = 66,
         read_timeout_s: float = 10.0,
     ):
         super().__init__(
