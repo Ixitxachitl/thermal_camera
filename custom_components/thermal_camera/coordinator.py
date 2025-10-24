@@ -130,13 +130,10 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
                 _LOGGER.exception("Unexpected error polling JSON: %s", e)
                 return self._last_data
         else:
-            # In streaming mode, avoid returning an initial empty frame to
-            # Home Assistant. If we haven't yet received any valid frame data,
-            # signal an update failure so consumers don't get an empty array and
-            # log repeatedly. Once a valid frame arrives the stream reader will
-            # call async_set_updated_data.
-            if not self._last_data or not self._last_data.get("frame_data"):
-                raise UpdateFailed("No frame available yet from binary stream")
+            # In streaming mode, just return the last-known data (which may be
+            # empty initially) so HA setup doesn't fail. The background reader
+            # will call async_set_updated_data() as soon as a valid frame
+            # arrives.
             return self._last_data
 
     async def _stream_reader_loop(self):
