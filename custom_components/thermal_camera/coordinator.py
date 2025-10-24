@@ -1,9 +1,9 @@
-
 import asyncio
 import logging
 import aiohttp
 from datetime import timedelta
 import async_timeout
+from homeassistant.exceptions import UpdateFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -120,6 +120,13 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
                 _LOGGER.exception("Unexpected error polling JSON: %s", e)
                 return self._last_data
         else:
+            # In streaming mode, avoid returning an initial empty frame to
+            # Home Assistant. If we haven't yet received any valid frame data,
+            # signal an update failure so consumers don't get an empty array and
+            # log repeatedly. Once a valid frame arrives the stream reader will
+            # call async_set_updated_data.
+            if not self._last_data or not self._last_data.get("frame_data"):
+                raise UpdateFailed("No frame available yet from binary stream")
             return self._last_data
 
     async def _stream_reader_loop(self):
