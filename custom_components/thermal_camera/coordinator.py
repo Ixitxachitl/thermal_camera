@@ -32,7 +32,7 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
         highest_field,
         average_field,
         *,
-        width: int = 16,
+    width: int = 32,
         height: int = 24,
         update_interval_ms: int = 500,
         use_stream: bool = None,
@@ -241,7 +241,10 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
 
                 cnt = len(payload) // 2
                 fmt = ">" + ("H" * cnt)
-                return list(struct.unpack(fmt, payload))
+                raw_vals = list(struct.unpack(fmt, payload))
+                # convert raw uint16 -> Celsius using device formula: (v/128.0)-64.0
+                vals = [((v / 128.0) - 64.0) for v in raw_vals]
+                return vals
             except Exception:
                 pass
 
