@@ -1,4 +1,5 @@
 import asyncio
+import time
 import logging
 import aiohttp
 from datetime import timedelta
@@ -28,7 +29,8 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
     Backwards compatible constructor signature is preserved so existing code
     that constructs this class with (hass, session, url, path, data_field,
     lowest_field, highest_field, average_field) continues to work. Additional
-    optional kwargs: width, height, update_interval_ms, use_stream.
+    optional kwargs: width, height, update_interval_ms, use_stream,
+    stream_push_ms (throttle push frequency when streaming; default 100ms).
     """
 
     def __init__(
@@ -42,10 +44,11 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
         highest_field,
         average_field,
         *,
-    width: int = 32,
+        width: int = 32,
         height: int = 24,
         update_interval_ms: int = 500,
         use_stream: bool = None,
+        stream_push_ms: int = 100,
     ):
         super().__init__(
             hass,
@@ -63,6 +66,7 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
         self.average_field = average_field
         self.width = width
         self.height = height
+        self.stream_push_ms = max(1, int(stream_push_ms))
 
         # Decide whether to use stream: explicit flag overrides, otherwise use
         # stream when path == 'bin'.
@@ -157,6 +161,7 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
 
                     _LOGGER.debug("Connected to stream, reading frames")
                     backoff = 1.0
+                    last_push_ts = 0.0  # monotonic seconds
 
                     while True:
                         header = await resp.content.readexactly(4)
@@ -201,10 +206,14 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
                             "avg_value": (avg_v if avg_v is not None else self._last_data.get("avg_value", 0.0)),
                         }
 
-                        try:
-                            self.async_set_updated_data(self._last_data)
-                        except Exception as e:
-                            _LOGGER.exception("Failed to set updated data: %s", e)
+                        # Throttle updates to Home Assistant to reduce load
+                        now_ts = time.monotonic()
+                        if (now_ts - last_push_ts) * 1000.0 >= self.stream_push_ms:
+                            last_push_ts = now_ts
+                            try:
+                                self.async_set_updated_data(self._last_data)
+                            except Exception as e:
+                                _LOGGER.exception("Failed to set updated data: %s", e)
 
             except asyncio.CancelledError:
                 _LOGGER.debug("Stream reader cancelled")
