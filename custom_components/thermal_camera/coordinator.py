@@ -3,8 +3,18 @@ import logging
 import aiohttp
 from datetime import timedelta
 import async_timeout
-from homeassistant.exceptions import UpdateFailed
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+# UpdateFailed lives in helpers.update_coordinator in current HA. Fall back
+# gracefully if imported location differs on older cores.
+try:
+    from homeassistant.helpers.update_coordinator import (
+        DataUpdateCoordinator,
+        UpdateFailed,
+    )
+except Exception:  # pragma: no cover - compatibility shim
+    from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+
+    class UpdateFailed(Exception):
+        pass
 
 _LOGGER = logging.getLogger(__name__)
 
