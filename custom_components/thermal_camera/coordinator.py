@@ -48,7 +48,7 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
         height: int = 24,
         update_interval_ms: int = 500,
         use_stream: bool = None,
-        stream_push_ms: int = 100,
+    stream_push_ms: int = 200,
     ):
         super().__init__(
             hass,
@@ -209,11 +209,8 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
                             except Exception:
                                 numeric = None
 
+                        # Keep a flat 1D list to reduce object churn; consumers can reshape if needed
                         frame_data = values
-                        if isinstance(values, list) and len(values) == (self.width * self.height):
-                            frame_data = [
-                                values[i * self.width : (i + 1) * self.width] for i in range(self.height)
-                            ]
 
                         self._last_data = {
                             "frame_data": frame_data,
@@ -229,6 +226,8 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
                                 self.async_set_updated_data(self._last_data)
                             except Exception as e:
                                 _LOGGER.exception("Failed to set updated data: %s", e)
+                            # Yield to event loop to avoid starving HA
+                            await asyncio.sleep(0)
 
             except asyncio.CancelledError:
                 _LOGGER.debug("Stream reader cancelled")
