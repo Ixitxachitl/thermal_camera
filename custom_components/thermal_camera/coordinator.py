@@ -89,6 +89,14 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
                             return self._last_data
                         data = await resp.json()
                         frame_data = data.get(self.data_field, []) if self.data_field else data
+                        # If the response lacked frame data, keep the last known frame to
+                        # avoid spamming downstream components with empty frames.
+                        if not frame_data:
+                            _LOGGER.debug(
+                                "JSON response missing/empty frame data; keeping last known frame"
+                            )
+                            frame_data = self._last_data.get("frame_data", [])
+
                         min_v = data.get(self.lowest_field, 0.0) if self.lowest_field else 0.0
                         max_v = data.get(self.highest_field, 0.0) if self.highest_field else 0.0
                         avg_v = data.get(self.average_field, 0.0) if self.average_field else 0.0
@@ -147,6 +155,13 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
                             break
                         payload = await resp.content.readexactly(length)
                         values = self._parse_payload(payload)
+
+                        # If the parsed payload is an empty list, skip updating the
+                        # last-known frame. Empty frames are noisy for consumers;
+                        # prefer keeping the previous frame until valid data arrives.
+                        if isinstance(values, list) and not values:
+                            _LOGGER.debug("Received empty frame from stream; keeping last known frame")
+                            continue
 
                         # compute stats if numeric
                         min_v = max_v = avg_v = None
