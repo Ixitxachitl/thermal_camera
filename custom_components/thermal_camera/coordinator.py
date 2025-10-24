@@ -75,6 +75,18 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
         else:
             self.use_stream = bool(use_stream)
 
+        # In streaming mode, disable scheduled polling updates so we don't
+        # push empty frames to listeners. Updates will be delivered only by the
+        # background stream reader via async_set_updated_data() once a valid
+        # frame arrives.
+        if self.use_stream:
+            try:
+                # DataUpdateCoordinator allows update_interval to be changed
+                # after init; setting to None disables the scheduler.
+                self.update_interval = None
+            except Exception:
+                pass
+
         self._last_data = {
             "frame_data": [],
             "min_value": 0.0,
