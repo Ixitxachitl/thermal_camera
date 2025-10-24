@@ -48,7 +48,8 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
         height: int = 24,
         update_interval_ms: int = 500,
         use_stream: bool = None,
-    stream_push_ms: int = 1000,
+        stream_push_ms: int = 1000,
+        read_timeout_s: float = 10.0,
     ):
         super().__init__(
             hass,
@@ -67,6 +68,7 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
         self.width = width
         self.height = height
         self.stream_push_ms = max(1, int(stream_push_ms))
+        self.read_timeout_s = float(read_timeout_s)
 
         # Decide whether to use stream: explicit flag overrides, otherwise use
         # stream when path == 'bin'.
@@ -177,7 +179,10 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
                     pending_payload: bytes | None = None
 
                     while True:
-                        header = await resp.content.readexactly(4)
+                        # Per-read timeout to detect stalled connections and trigger reconnect
+                        header = await asyncio.wait_for(
+                            resp.content.readexactly(4), timeout=self.read_timeout_s
+                        )
                         if not header:
                             _LOGGER.debug("Stream closed by server")
                             break
@@ -185,7 +190,9 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
                         if length <= 0:
                             _LOGGER.warning("Invalid frame length %s, closing stream", length)
                             break
-                        payload = await resp.content.readexactly(length)
+                        payload = await asyncio.wait_for(
+                            resp.content.readexactly(length), timeout=self.read_timeout_s
+                        )
 
                         # Coalesce frames: avoid parsing for frames we won't push
                         now_ts = time.monotonic()
@@ -215,9 +222,9 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
                         if isinstance(values, list) and values:
                             try:
                                 numeric = [float(x) for x in values]
-                                min_v = min(numeric)
-                                max_v = max(numeric)
-                                avg_v = sum(numeric) / len(numeric)
+                                min_v = round(min(numeric), 1)
+                                max_v = round(max(numeric), 1)
+                                avg_v = round(sum(numeric) / len(numeric), 1)
                             except Exception:
                                 numeric = None
 
