@@ -12,55 +12,236 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
 
     def __init__(self, hass, session, url, path, data_field, lowest_field, highest_field, average_field):
         super().__init__(
-            hass,
-            _LOGGER,
-            name="Thermal Camera Data Coordinator",
-            update_interval=timedelta(milliseconds=500),  # Keep fast 500ms updates
-        )
-        self.session = session
-        self.url = url
-        self.path = path
-        self.data_field = data_field
-        self.lowest_field = lowest_field
-        self.highest_field = highest_field
-        self.average_field = average_field
-        self._last_data = {
-            "frame_data": [],
-            "min_value": 0.0,
-            "max_value": 0.0,
-            "avg_value": 0.0
-        }
+            import asyncio
+            import logging
+            import aiohttp
+            from datetime import timedelta
+            import async_timeout
+            from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-    async def _async_update_data(self):
-        """Fetch data from the camera API, retaining last known data if fetch fails."""
-        try:
-            _LOGGER.debug("Attempting to fetch data from the thermal camera API.")
-            start = asyncio.get_event_loop().time()
-            async with async_timeout.timeout(1.5):  # Faster timeout to detect issues sooner
-                async with self.session.get(f"{self.url}/{self.path}", headers={"Connection": "close"}) as response:
-                    duration = asyncio.get_event_loop().time() - start
-                    _LOGGER.debug(f"Fetch took {duration:.2f} seconds")
+            _LOGGER = logging.getLogger(__name__)
 
-                    if response.status != 200:
-                        _LOGGER.warning(f"Failed to fetch data: {response.status}")
+
+            class ThermalCameraDataCoordinator(DataUpdateCoordinator):
+                """
+                Hybrid coordinator: behaves like the original poller when talking to a JSON
+                endpoint, and can optionally open a persistent binary stream (length-
+                prefixed frames) when `use_stream=True` or path == 'bin'.
+
+                Backwards compatible constructor signature is preserved so existing code
+                that constructs this class with (hass, session, url, path, data_field,
+                lowest_field, highest_field, average_field) continues to work. Additional
+                optional kwargs: width, height, update_interval_ms, use_stream.
+                """
+
+                def __init__(
+                    self,
+                    hass,
+                    session,
+                    url,
+                    path,
+                    data_field,
+                    lowest_field,
+                    highest_field,
+                    average_field,
+                    *,
+                    width: int = 16,
+                    height: int = 24,
+                    update_interval_ms: int = 500,
+                    use_stream: bool = None,
+                ):
+                    super().__init__(
+                        hass,
+                        _LOGGER,
+                        name="Thermal Camera Data Coordinator",
+                        update_interval=timedelta(milliseconds=update_interval_ms),
+                    )
+
+                    self.session = session
+                    self.url = url.rstrip("/")
+                    self.path = path.lstrip("/")
+                    self.data_field = data_field
+                    self.lowest_field = lowest_field
+                    self.highest_field = highest_field
+                    self.average_field = average_field
+                    self.width = width
+                    self.height = height
+
+                    # Decide whether to use stream: explicit flag overrides, otherwise use
+                    # stream when path == 'bin'.
+                    if use_stream is None:
+                        self.use_stream = (self.path == "bin")
+                    else:
+                        self.use_stream = bool(use_stream)
+
+                    self._last_data = {
+                        "frame_data": [],
+                        "min_value": 0.0,
+                        "max_value": 0.0,
+                        "avg_value": 0.0,
+                    }
+
+                    # background stream reader (only created in stream mode)
+                    self._reader_task = None
+                    if self.use_stream:
+                        self._reader_task = asyncio.create_task(self._stream_reader_loop())
+
+                async def _async_update_data(self):
+                    """
+                    Polling path (JSON) — kept for backward compatibility.
+                    If streaming mode is active this method simply returns the last known
+                    data.
+                    """
+                    if not self.use_stream:
+                        try:
+                            _LOGGER.debug("Polling JSON endpoint %s/%s", self.url, self.path)
+                            async with async_timeout.timeout(1.5):
+                                async with self.session.get(f"{self.url}/{self.path}", headers={"Connection": "close"}) as resp:
+                                    if resp.status != 200:
+                                        _LOGGER.warning("Failed to fetch JSON: %s", resp.status)
+                                        return self._last_data
+                                    data = await resp.json()
+                                    frame_data = data.get(self.data_field, []) if self.data_field else data
+                                    min_v = data.get(self.lowest_field, 0.0) if self.lowest_field else 0.0
+                                    max_v = data.get(self.highest_field, 0.0) if self.highest_field else 0.0
+                                    avg_v = data.get(self.average_field, 0.0) if self.average_field else 0.0
+                                    self._last_data = {
+                                        "frame_data": frame_data,
+                                        "min_value": min_v,
+                                        "max_value": max_v,
+                                        "avg_value": avg_v,
+                                    }
+                                    # set updated data and notify listeners
+                                    try:
+                                        self.async_set_updated_data(self._last_data)
+                                    except Exception:
+                                        # older integrations may rely on different behavior; ignore
+                                        pass
+                                    return self._last_data
+                        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                            _LOGGER.warning("Network error polling JSON: %s", e)
+                            return self._last_data
+                        except Exception as e:
+                            _LOGGER.exception("Unexpected error polling JSON: %s", e)
+                            return self._last_data
+                    else:
                         return self._last_data
 
-                    data = await response.json()
-                    self._last_data = {
-                        "frame_data": data.get(self.data_field, []),
-                        "min_value": data.get(self.lowest_field, 0.0),
-                        "max_value": data.get(self.highest_field, 0.0),
-                        "avg_value": data.get(self.average_field, 0.0),
-                    }
-                    _LOGGER.debug("Data fetched and processed successfully.")
+                async def _stream_reader_loop(self):
+                    """
+                    Persistent stream reader for length-prefixed binary frames. Reconnects
+                    with exponential backoff on error.
+                    """
+                    connect_url = f"{self.url}/{self.path}"
+                    backoff = 1.0
+                    while True:
+                        try:
+                            _LOGGER.debug("Connecting to binary stream at %s", connect_url)
+                            timeout = aiohttp.ClientTimeout(total=None)
+                            headers = {"Connection": "keep-alive"}
+                            async with self.session.get(connect_url, timeout=timeout, headers=headers) as resp:
+                                if resp.status != 200:
+                                    _LOGGER.warning("Stream endpoint returned %s, retrying", resp.status)
+                                    await asyncio.sleep(backoff)
+                                    backoff = min(backoff * 2, 10.0)
+                                    continue
 
-                    self.async_update_listeners()
+                                _LOGGER.debug("Connected to stream, reading frames")
+                                backoff = 1.0
 
-                    return self._last_data
+                                while True:
+                                    header = await resp.content.readexactly(4)
+                                    if not header:
+                                        _LOGGER.debug("Stream closed by server")
+                                        break
+                                    length = int.from_bytes(header, byteorder="big", signed=False)
+                                    if length <= 0:
+                                        _LOGGER.warning("Invalid frame length %s, closing stream", length)
+                                        break
+                                    payload = await resp.content.readexactly(length)
+                                    values = self._parse_payload(payload)
 
-        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-            _LOGGER.error(f"Network error fetching data: {e}")
-            return self._last_data
-        except Exception as e:
-            _LOGGER.error(f"Unexpected error communicating with API: {e}")
-            return self._last_data
+                                    # compute stats if numeric
+                                    min_v = max_v = avg_v = None
+                                    if isinstance(values, list) and values:
+                                        try:
+                                            numeric = [float(x) for x in values]
+                                            min_v = min(numeric)
+                                            max_v = max(numeric)
+                                            avg_v = sum(numeric) / len(numeric)
+                                        except Exception:
+                                            numeric = None
+
+                                    frame_data = values
+                                    if isinstance(values, list) and len(values) == (self.width * self.height):
+                                        frame_data = [
+                                            values[i * self.width : (i + 1) * self.width] for i in range(self.height)
+                                        ]
+
+                                    self._last_data = {
+                                        "frame_data": frame_data,
+                                        "min_value": (min_v if min_v is not None else self._last_data.get("min_value", 0.0)),
+                                        "max_value": (max_v if max_v is not None else self._last_data.get("max_value", 0.0)),
+                                        "avg_value": (avg_v if avg_v is not None else self._last_data.get("avg_value", 0.0)),
+                                    }
+
+                                    try:
+                                        self.async_set_updated_data(self._last_data)
+                                    except Exception as e:
+                                        _LOGGER.exception("Failed to set updated data: %s", e)
+
+                        except asyncio.CancelledError:
+                            _LOGGER.debug("Stream reader cancelled")
+                            break
+                        except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
+                            _LOGGER.warning("Stream connection error: %s — reconnecting in %.1fs", exc, backoff)
+                            await asyncio.sleep(backoff)
+                            backoff = min(backoff * 2, 10.0)
+                            continue
+                        except Exception as exc:
+                            _LOGGER.exception("Unexpected stream reader error: %s — reconnecting in %.1fs", exc, backoff)
+                            await asyncio.sleep(backoff)
+                            backoff = min(backoff * 2, 10.0)
+                            continue
+
+                def _parse_payload(self, payload: bytes):
+                    # try JSON
+                    try:
+                        text = payload.decode("utf-8")
+                        data = __import__("json").loads(text)
+                        if isinstance(data, list):
+                            return data
+                    except Exception:
+                        pass
+
+                    # float32 big-endian
+                    if len(payload) % 4 == 0:
+                        try:
+                            import struct
+
+                            cnt = len(payload) // 4
+                            fmt = ">" + ("f" * cnt)
+                            return list(struct.unpack(fmt, payload))
+                        except Exception:
+                            pass
+
+                    # uint16 big-endian
+                    if len(payload) % 2 == 0:
+                        try:
+                            import struct
+
+                            cnt = len(payload) // 2
+                            fmt = ">" + ("H" * cnt)
+                            return list(struct.unpack(fmt, payload))
+                        except Exception:
+                            pass
+
+                    return payload
+
+                async def async_will_remove(self):
+                    if self._reader_task:
+                        self._reader_task.cancel()
+                        try:
+                            await self._reader_task
+                        except asyncio.CancelledError:
+                            pass
