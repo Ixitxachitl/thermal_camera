@@ -48,7 +48,7 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
         height: int = 24,
         update_interval_ms: int = 500,
         use_stream: bool = None,
-    stream_push_ms: int = 200,
+    stream_push_ms: int = 1000,
     ):
         super().__init__(
             hass,
