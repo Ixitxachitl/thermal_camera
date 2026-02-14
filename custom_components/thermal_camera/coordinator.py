@@ -3,7 +3,6 @@ import time
 import logging
 import aiohttp
 from datetime import timedelta
-import async_timeout
 # UpdateFailed lives in helpers.update_coordinator in current HA. Fall back
 # gracefully if imported location differs on older cores.
 try:
@@ -110,7 +109,7 @@ class ThermalCameraDataCoordinator(DataUpdateCoordinator):
         if not self.use_stream:
             try:
                 _LOGGER.debug("Polling JSON endpoint %s/%s", self.url, self.path)
-                async with async_timeout.timeout(1.5):
+                async with asyncio.timeout(1.5):
                     async with self.session.get(f"{self.url}/{self.path}", headers={"Connection": "close"}) as resp:
                         if resp.status != 200:
                             _LOGGER.warning("Failed to fetch JSON: %s", resp.status)
