@@ -1,0 +1,48 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Thermal Camera",
+        "description": "Configure your thermal camera device",
+        "data": {
+          "url": "URL",
+          "name": "Name",
+          "rows": "Rows",
+          "columns": "Columns",
+          "path": "Path",
+          "data_field": "Data Field",
+          "lowest_field": "Lowest Field",
+          "highest_field": "Highest Field",
+          "average_field": "Average Field",
+          "resample": "Resample Method",
+          "motion_threshold": "Motion Threshold",
+          "desired_height": "Desired Height"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the device"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Thermal Camera Options",
+        "data": {
+          "url": "URL",
+          "name": "Name",
+          "rows": "Rows",
+          "columns": "Columns",
+          "path": "Path",
+          "data_field": "Data Field",
+          "lowest_field": "Lowest Field",
+          "highest_field": "Highest Field",
+          "average_field": "Average Field",
+          "resample": "Resample Method",
+          "motion_threshold": "Motion Threshold",
+          "desired_height": "Desired Height"
+        }
+      }
+    }
+  }
+}

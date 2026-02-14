@@ -1,7 +1,7 @@
 {
   "domain": "thermal_camera",
   "name": "Thermal Camera",
-  "version": "1.6.4",
+  "version": "1.7.1",
   "config_flow": true,
   "documentation": "https://github.com/Ixitxachitl/thermal_camera",
   "requirements": [
@@ -12,6 +12,5 @@
   "dependencies": [],
   "codeowners": ["@Ixitxachitl"],
   "iot_class": "local_polling",
-  "supported_brands": ["M5Stack"],
   "integration_type": "device"
 }
