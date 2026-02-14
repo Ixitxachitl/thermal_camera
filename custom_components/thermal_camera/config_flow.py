@@ -7,7 +7,7 @@ from .constants import (
     DOMAIN, DEFAULT_NAME, DEFAULT_ROWS, DEFAULT_COLS, DEFAULT_PATH,
     DEFAULT_DATA_FIELD, DEFAULT_LOWEST_FIELD, DEFAULT_HIGHEST_FIELD,
     DEFAULT_RESAMPLE_METHOD, DEFAULT_MOTION_THRESHOLD, DEFAULT_AVERAGE_FIELD,
-    DEFAULT_MJPEG_PORT, DEFAULT_DESIRED_HEIGHT
+    DEFAULT_DESIRED_HEIGHT
 )
 
 # Configuration schema for the UI
@@ -59,13 +59,10 @@ class ThermalCameraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
-        return ThermalCameraOptionsFlowHandler(config_entry)
+        return ThermalCameraOptionsFlowHandler()
 
 class ThermalCameraOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle an options flow for the Thermal Camera integration."""
-
-    def __init__(self, config_entry):
-        self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
         """Manage the options for the thermal camera."""
@@ -87,7 +84,6 @@ class ThermalCameraOptionsFlowHandler(config_entries.OptionsFlow):
             vol.Optional("average_field", default=self.config_entry.data.get("average_field", DEFAULT_AVERAGE_FIELD)): str,
             vol.Optional("resample", default=self.config_entry.data.get("resample", DEFAULT_RESAMPLE_METHOD)): vol.In(["NEAREST", "BILINEAR", "BICUBIC", "LANCZOS"]),
             vol.Optional("motion_threshold", default=self.config_entry.data.get("motion_threshold", DEFAULT_MOTION_THRESHOLD)): int,
-            # vol.Optional("mjpeg_port", default=self.config_entry.data.get("mjpeg_port", DEFAULT_MJPEG_PORT)): int,
             vol.Optional("desired_height", default=self.config_entry.data.get("desired_height", DEFAULT_DESIRED_HEIGHT)): int,
         })
 
